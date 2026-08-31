@@ -62,6 +62,9 @@ export default function App() {
     storageService.saveCases(updated);
     setActiveCaseId(newCase.id);
     setCurrentView("studio");
+    setTimeout(() => {
+      setIsAlignmentStudioOpen(true);
+    }, 100);
   };
 
   const handleUpdateCase = (updatedCase: PatientCase, versionNote?: string) => {

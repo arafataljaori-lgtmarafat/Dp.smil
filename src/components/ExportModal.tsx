@@ -2,21 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Download,
-  Video,
   CheckCircle2,
-  Sparkles,
-  Layers,
   Image as ImageIcon,
   Loader2,
   Film,
-  Share2,
-  Sliders,
-  Check,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { AspectRatioType, CasePhoto, PatientCase, PhotoAlignment, VideoProjectConfig } from "../types";
+import { PatientCase, PhotoAlignment } from "../types";
 import { DentalVideoEngine, ASPECT_RATIOS } from "../services/videoEngine";
-import { audioEngine } from "../services/audioEngine";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -41,7 +34,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
   const [exportedPosterUrl, setExportedPosterUrl] = useState<string | null>(null);
 
-  const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cancelRef = useRef<boolean>(false);
 
   const beforePhoto = patientCase.photos.find((p) => p.role === "before") || null;
   const afterPhoto = patientCase.photos.find((p) => p.role === "after") || null;
@@ -53,8 +46,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       setProgress(0);
       setExportedVideoUrl(null);
       setExportedPosterUrl(null);
+      cancelRef.current = false;
     }
   }, [isOpen]);
+
+  const handleCancelExport = () => {
+    cancelRef.current = true;
+    setIsExporting(false);
+    setStatusMessage("تم إلغاء التصدير.");
+    setProgress(0);
+  };
 
   // Generate 4K High-Res comparison poster
   const handleExportPoster = async () => {
@@ -113,7 +114,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const handleStartExport = async () => {
     setIsExporting(true);
     setProgress(0);
-    setStatusMessage("جاري تحميل الصور وتهيئة محرك الرسم السريري...");
+    setStatusMessage("جاري تحميل الصور وتهيئة محرك الرسم...");
 
     try {
       // 1. Load Images
@@ -202,7 +203,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       const afterAlign: PhotoAlignment =
         afterPhoto?.alignment || { scale: 1.0, rotation: 0, offsetX: 0, offsetY: 0, flipH: false };
 
+      cancelRef.current = false;
+
       for (let frameIndex = 0; frameIndex <= totalFrames; frameIndex++) {
+        if (cancelRef.current) {
+          mediaRecorder.stop();
+          return;
+        }
+
         const t = frameIndex * frameInterval;
         DentalVideoEngine.renderFrame(
           ctx,
@@ -218,13 +226,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         // Update progress
         const percent = Math.min(100, Math.round((frameIndex / totalFrames) * 100));
         setProgress(percent);
-        setStatusMessage(`جاري تصيير الإطار السريري ${frameIndex} من ${totalFrames} (${percent}%)...`);
+        setStatusMessage(`تصيير الإطار ${frameIndex} من ${totalFrames} (${percent}%)`);
 
         // Give browser frame breather
         await new Promise((r) => setTimeout(r, 1000 / (fps * 2)));
       }
 
-      setStatusMessage("جاري إنهاء وتجميع مسار الفيديو...");
+      setStatusMessage("جاري إنهاء الفيديو...");
       mediaRecorder.stop();
 
       const finalBlob = await recorderPromise;
@@ -242,8 +250,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       });
 
       // Auto Download
+      const fileExt = mimeType.includes("webm") ? "webm" : "mp4";
       const link = document.createElement("a");
-      link.download = `DentPilot-${patientCase.patientCode}-${config.templateId}-${config.aspectRatio.replace(":", "x")}.mp4`;
+      link.download = `DentPilot-${patientCase.patientCode}-${config.templateId}-${config.aspectRatio.replace(":", "x")}.${fileExt}`;
       link.href = finalUrl;
       link.click();
     } catch (err: any) {
@@ -256,18 +265,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center p-0 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-slate-950 w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl border border-teal-500/20 overflow-hidden max-h-[90vh]">
+
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+        <div className="px-5 py-4 border-b border-teal-900/30 bg-teal-950/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
+            <div className="w-10 h-10 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center">
               <Download className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">تصدير فيديو الحالة السريرية</h2>
-              <p className="text-xs text-slate-400">
-                {patientCase.patientName} • {config.aspectRatio} • {config.duration} ثوانٍ
+              <h2 className="text-base font-bold text-slate-100">تصدير الفيديو</h2>
+              <p className="text-[11px] text-teal-200/60 mt-0.5">
+                {patientCase.patientName} • {config.aspectRatio}
               </p>
             </div>
           </div>
@@ -275,92 +285,101 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <button
             onClick={onClose}
             disabled={isExporting}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-30"
+            className="w-8 h-8 rounded-full bg-slate-900/50 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
+        <div className="p-5 space-y-5 overflow-y-auto pb-safe">
           {/* Status / Progress view while exporting */}
           {isExporting ? (
             <div className="py-8 space-y-5 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mx-auto text-teal-400">
-                <Loader2 className="w-8 h-8 animate-spin" />
+              <div className="w-20 h-20 rounded-3xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mx-auto text-teal-400 shadow-[0_0_30px_rgba(20,184,166,0.15)]">
+                <Loader2 className="w-10 h-10 animate-spin" />
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-white">جاري تصدير الفيديو بدقة فائقة...</h3>
-                <p className="text-xs text-teal-400 font-mono">{statusMessage}</p>
+                <h3 className="text-base font-bold text-white">جاري تصدير الفيديو...</h3>
+                <p className="text-[11px] text-teal-400 font-mono">{statusMessage}</p>
               </div>
 
               {/* Progress Bar */}
               <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800 p-0.5">
                 <div
-                  className="bg-gradient-to-r from-teal-500 to-cyan-400 h-full rounded-full transition-all duration-150 shadow-lg shadow-teal-500/30"
+                  className="bg-gradient-to-r from-teal-500 to-cyan-400 h-full rounded-full transition-all duration-150"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-xs text-slate-400 font-mono font-bold">{progress}%</span>
+              <span className="text-[11px] text-slate-400 font-mono font-bold">{progress}%</span>
+
+              <div className="pt-4">
+                <button
+                  onClick={handleCancelExport}
+                  className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold border border-slate-800 transition-colors"
+                >
+                  إلغاء التصدير
+                </button>
+              </div>
             </div>
           ) : exportedVideoUrl ? (
             /* Completed Export View */
             <div className="py-6 space-y-5 text-center animate-in zoom-in-95 duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
-                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+              <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+                <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white">تم تصدير وتحميل الفيديو بنجاح!</h3>
-                <p className="text-xs text-slate-400">
-                  الفيديو جاهز للنشر الفوري على Instagram Reels أو TikTok أو شاشات الانتظار بالعيادة.
+              <div className="space-y-2">
+                <h3 className="text-base font-bold text-white">اكتمل التصدير بنجاح!</h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed px-4">
+                  الفيديو جاهز للنشر الفوري على Instagram Reels أو TikTok. تم حفظه تلقائياً في جهازك.
                 </p>
               </div>
 
               {/* Download actions */}
-              <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-2">
                 <a
                   href={exportedVideoUrl}
                   download={`DentPilot-${patientCase.patientCode}.mp4`}
-                  className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/25 flex items-center gap-2"
+                  className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
                 >
                   <Download className="w-4 h-4" />
-                  <span>إعادة تحميل الفيديو (MP4)</span>
+                  إعادة تحميل الفيديو
                 </a>
 
                 <button
                   onClick={handleExportPoster}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-2"
+                  className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold text-sm border border-slate-800 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
                 >
                   <ImageIcon className="w-4 h-4 text-cyan-400" />
-                  <span>تصدير بوستر مقارنة 4K</span>
+                  تصدير بوستر 4K للمقارنة
                 </button>
               </div>
             </div>
           ) : (
             /* Settings View before export */
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Resolution selector */}
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">دقة الفيديو (Resolution):</label>
-                <div className="grid grid-cols-3 gap-3">
+                <label className="text-[11px] font-bold text-slate-400 block mb-2 px-1">دقة الفيديو (Resolution)</label>
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: "1080p", label: "Full HD (1080p)", desc: "الأفضل لـ Instagram & Reels" },
-                    { id: "4k", label: "Ultra HD (4K)", desc: "أعلى جودة للعرض والشاشات" },
-                    { id: "720p", label: "HD (720p)", desc: "حجم ملف أصغر وأسرع" },
+                    { id: "1080p", label: "Full HD", desc: "للانستقرام" },
+                    { id: "4k", label: "Ultra HD", desc: "للشاشات" },
+                    { id: "720p", label: "HD", desc: "للواتساب" },
                   ].map((res) => (
                     <button
                       key={res.id}
                       onClick={() => setResolution(res.id as any)}
-                      className={`p-3 rounded-xl border text-right transition-all ${
+                      className={`p-3 rounded-xl border transition-all ${
                         resolution === res.id
-                          ? "bg-teal-950/40 border-teal-500 text-teal-300"
-                          : "bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white"
+                          ? "bg-teal-950 border-teal-500 text-teal-300"
+                          : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300 hover:bg-slate-800"
                       }`}
                     >
-                      <span className="text-xs font-bold block text-white">{res.label}</span>
-                      <span className="text-[10px] text-slate-400">{res.desc}</span>
+                      <span className="text-xs font-bold block text-slate-200">{res.label}</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5 block truncate">{res.desc}</span>
                     </button>
                   ))}
                 </div>
@@ -368,82 +387,70 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
               {/* FPS Toggle */}
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">معدل الإطارات (Frame Rate):</label>
-                <div className="grid grid-cols-2 gap-3">
+                <label className="text-[11px] font-bold text-slate-400 block mb-2 px-1">معدل الإطارات (Frame Rate)</label>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setFps(60)}
-                    className={`p-3 rounded-xl border text-right transition-all ${
+                    className={`p-3 rounded-xl border text-center transition-all ${
                       fps === 60
-                        ? "bg-teal-950/40 border-teal-500 text-teal-300"
-                        : "bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-teal-950 border-teal-500 text-teal-300"
+                        : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
                     }`}
                   >
-                    <span className="text-xs font-bold block text-white">60 FPS (Ultra Smooth)</span>
-                    <span className="text-[10px] text-slate-400">سلاسة سينمائية فائقة بدون تقطيع</span>
+                    <span className="text-xs font-bold block text-slate-200">60 FPS</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5">سلاسة فائقة</span>
                   </button>
 
                   <button
                     onClick={() => setFps(30)}
-                    className={`p-3 rounded-xl border text-right transition-all ${
+                    className={`p-3 rounded-xl border text-center transition-all ${
                       fps === 30
-                        ? "bg-teal-950/40 border-teal-500 text-teal-300"
-                        : "bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-teal-950 border-teal-500 text-teal-300"
+                        : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800"
                     }`}
                   >
-                    <span className="text-xs font-bold block text-white">30 FPS (Standard)</span>
-                    <span className="text-[10px] text-slate-400">المعدل القياسي المتوافق</span>
+                    <span className="text-xs font-bold block text-slate-200">30 FPS</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5">حجم أصغر</span>
                   </button>
                 </div>
               </div>
 
               {/* Audio inclusion toggle */}
-              <div className="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-white block">تضمين الموسيقى والمؤثرات الصوتية</span>
-                  <span className="text-[10px] text-slate-400">
-                    المسار المحدد: {config.audio.trackId}
+              <button
+                onClick={() => setIncludeAudio(!includeAudio)}
+                className="w-full bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between hover:bg-slate-800 transition-colors"
+              >
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-200 block">تضمين الصوت (Audio Track)</span>
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    {includeAudio ? "سيتم دمج الموسيقى في الفيديو النهائي" : "تصدير الفيديو بدون صوت"}
                   </span>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={includeAudio}
-                  onChange={(e) => setIncludeAudio(e.target.checked)}
-                  className="w-4 h-4 accent-teal-400 cursor-pointer"
-                />
-              </div>
-
-              {/* Still 4K Poster Export shortcut */}
-              <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-400">هل تحتاج بوستر مقارنة ثابت عالي الدقة فقط؟</span>
-                <button
-                  onClick={handleExportPoster}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1.5"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>تصدير بوستر 4K (JPG)</span>
-                </button>
-              </div>
+                <div className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${includeAudio ? 'bg-teal-500' : 'bg-slate-700'}`}>
+                  <div className={`w-4 h-4 bg-white rounded-full transition-transform ${includeAudio ? '-translate-x-4' : 'translate-x-0'}`} />
+                </div>
+              </button>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
         {!isExporting && !exportedVideoUrl && (
-          <div className="px-6 py-4 border-t border-slate-800 flex justify-between gap-3 bg-slate-900">
+          <div className="p-5 border-t border-slate-900 flex flex-col gap-3 sticky bottom-0 bg-slate-950">
             <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+              onClick={handleStartExport}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
             >
-              إلغاء
+              <Film className="w-4 h-4 stroke-[2.5]" />
+              بدء تصدير الفيديو
             </button>
 
             <button
-              id="btn-confirm-render"
-              onClick={handleStartExport}
-              className="flex-1 px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2"
+              onClick={handleExportPoster}
+              className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 font-bold text-sm border border-slate-800 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
             >
-              <Film className="w-4 h-4 stroke-[2.5]" />
-              <span>بدء تصدير الفيديو (Render MP4)</span>
+              <ImageIcon className="w-4 h-4" />
+              تصدير بوستر 4K للمقارنة
             </button>
           </div>
         )}

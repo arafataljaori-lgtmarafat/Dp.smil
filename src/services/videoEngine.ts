@@ -423,15 +423,30 @@ export class DentalVideoEngine {
     let cameraPanX = 0;
     let cameraPanY = 0;
 
+    // Smooth sinusoidal / quadratic progress for natural camera kinetics
+    const smoothProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+
     if (zoomEffect === "zoom-in") {
-      cameraScale = 1.0 + (zoomIntensity - 1.0) * progress;
+      cameraScale = 1.0 + (zoomIntensity - 1.0) * smoothProgress;
     } else if (zoomEffect === "zoom-out") {
-      cameraScale = zoomIntensity - (zoomIntensity - 1.0) * progress;
+      cameraScale = zoomIntensity - (zoomIntensity - 1.0) * smoothProgress;
+    } else if (zoomEffect === "ken-burns") {
+      // Ken Burns: cinematic slow zoom + diagonal drift
+      cameraScale = 1.02 + (zoomIntensity - 1.0) * 0.9 * smoothProgress;
+      cameraPanX = (smoothProgress - 0.5) * (width * 0.05);
+      cameraPanY = (smoothProgress - 0.5) * (height * 0.03);
     } else if (zoomEffect === "pan-left-to-right") {
-      cameraPanX = (progress - 0.5) * (width * 0.08);
-      cameraScale = 1.06;
+      cameraPanX = (smoothProgress - 0.5) * (width * 0.07);
+      cameraScale = 1.05;
+    } else if (zoomEffect === "pan-right-to-left") {
+      cameraPanX = (0.5 - smoothProgress) * (width * 0.07);
+      cameraScale = 1.05;
     } else if (zoomEffect === "subtle-breathe") {
-      cameraScale = 1.0 + Math.sin(progress * Math.PI * 2) * 0.04;
+      cameraScale = 1.0 + Math.sin(progress * Math.PI * 2) * 0.035;
+    } else if (zoomEffect === "parallax-shift") {
+      cameraScale = 1.04;
+      cameraPanX = Math.sin(progress * Math.PI * 2) * (width * 0.025);
+      cameraPanY = Math.cos(progress * Math.PI * 2) * (height * 0.015);
     }
 
     let phase: "before" | "transition" | "after" = "before";
@@ -446,13 +461,13 @@ export class DentalVideoEngine {
     const transProgress =
       t < startTrans ? 0 : t > endTrans ? 1 : (t - startTrans) / transitionDuration;
 
-    // Easing function for smooth professional feel
+    // Smooth cubic bezier-like ease
     const ease = (p: number) =>
-      p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+      p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
     const easedT = ease(transProgress);
 
     // ==========================================
-    // TEMPLATE RENDERING LOGIC (Deterministic)
+    // TEMPLATE RENDERING LOGIC (Deterministic & Clinical Safe)
     // ==========================================
     if (templateId === "cinematic-reveal" || templateId === "curtain-wipe") {
       // 1. Draw Before Image
@@ -493,9 +508,127 @@ export class DentalVideoEngine {
           ctx.restore();
         }
       }
-    } else if (templateId === "split-slider") {
+    } else if (templateId === "luxury-veneers") {
+      // Luxury Veneers: Champagne gold theme with delicate dual sweep & anterior zoom
+      if (images.beforeImg) {
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+      }
+
+      if (images.afterImg && easedT > 0) {
+        ctx.save();
+        const wipeX = width * easedT;
+        ctx.beginPath();
+        ctx.rect(0, 0, wipeX, height);
+        ctx.clip();
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale * 1.02, cameraPanX, cameraPanY);
+        ctx.restore();
+
+        // Golden divider line
+        if (easedT < 1.0 && easedT > 0.0) {
+          ctx.save();
+          const goldGrad = ctx.createLinearGradient(wipeX, 0, wipeX, height);
+          goldGrad.addColorStop(0, "#f59e0b");
+          goldGrad.addColorStop(0.5, "#fef08a");
+          goldGrad.addColorStop(1, "#d97706");
+          ctx.strokeStyle = goldGrad;
+          ctx.lineWidth = 5;
+          ctx.shadowColor = "#f59e0b";
+          ctx.shadowBlur = 24;
+          ctx.beginPath();
+          ctx.moveTo(wipeX, 0);
+          ctx.lineTo(wipeX, height);
+          ctx.stroke();
+
+          // Diamond emblem at center
+          const cy = height / 2;
+          ctx.fillStyle = "#fef08a";
+          ctx.beginPath();
+          ctx.moveTo(wipeX, cy - 18);
+          ctx.lineTo(wipeX + 14, cy);
+          ctx.lineTo(wipeX, cy + 18);
+          ctx.lineTo(wipeX - 14, cy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = "#92400e";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    } else if (templateId === "vertical-curtain") {
+      // Vertical Curtain: Reveals smile arc from top to bottom (Gingival margin to Incisal edge)
+      if (images.beforeImg) {
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+      }
+
+      if (images.afterImg && easedT > 0) {
+        ctx.save();
+        const wipeY = height * easedT;
+        ctx.beginPath();
+        ctx.rect(0, 0, width, wipeY);
+        ctx.clip();
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+
+        if (easedT < 1.0 && easedT > 0.0) {
+          ctx.save();
+          ctx.strokeStyle = config.branding.accentColor || "#14b8a6";
+          ctx.lineWidth = 4;
+          ctx.shadowColor = config.branding.accentColor || "#14b8a6";
+          ctx.shadowBlur = 20;
+          ctx.beginPath();
+          ctx.moveTo(0, wipeY);
+          ctx.lineTo(width, wipeY);
+          ctx.stroke();
+
+          // Center Horizontal Pill
+          const handleW = Math.max(72, width * 0.12);
+          const handleH = 14;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect((width - handleW) / 2, wipeY - handleH / 2, handleW, handleH, 7);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    } else if (templateId === "clinical-clean") {
+      // Clinical Clean: Pure medical white/cyan frame with accurate sub-pixel split
+      if (images.beforeImg) {
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+      }
+
+      if (images.afterImg && easedT > 0) {
+        ctx.save();
+        const wipeX = width * easedT;
+        ctx.beginPath();
+        ctx.rect(0, 0, wipeX, height);
+        ctx.clip();
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+
+        if (easedT < 1.0) {
+          ctx.save();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(wipeX, 0);
+          ctx.lineTo(wipeX, height);
+          ctx.stroke();
+
+          // Measurement ticks on divider
+          for (let y = 50; y < height - 50; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(wipeX - 6, y);
+            ctx.lineTo(wipeX + 6, y);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+    } else if (templateId === "split-compare" || templateId === "split-slider") {
       // Split Slider: Before on left, After on right with moving split
-      // Oscillator sweep or linear sweep
       const splitPos = width * (0.15 + 0.7 * Math.sin(progress * Math.PI));
 
       if (images.beforeImg) {
@@ -519,9 +652,9 @@ export class DentalVideoEngine {
       // Slider bar
       ctx.save();
       ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 14;
       ctx.beginPath();
       ctx.moveTo(splitPos, 0);
       ctx.lineTo(splitPos, height);
@@ -531,35 +664,35 @@ export class DentalVideoEngine {
       const cy = height / 2;
       ctx.fillStyle = config.branding.accentColor || "#14b8a6";
       ctx.beginPath();
-      ctx.arc(splitPos, cy, 24, 0, Math.PI * 2);
+      ctx.arc(splitPos, cy, 26, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.stroke();
 
       // Small arrows
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 16px sans-serif";
+      ctx.font = "bold 15px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("◀ ▶", splitPos, cy);
       ctx.restore();
-    } else if (templateId === "spotlight-zoom") {
-      // Spotlight Zoom: High zoom exploring center incisors, then aperture opens
+    } else if (templateId === "spotlight-smile" || templateId === "spotlight-zoom") {
+      // Spotlight Smile: High zoom exploring center incisors, then iris opens
       if (images.beforeImg) {
         this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
       }
 
       if (images.afterImg && easedT > 0) {
         ctx.save();
-        const maxRadius = Math.sqrt(width * width + height * height) * 0.65;
+        const maxRadius = Math.sqrt(width * width + height * height) * 0.68;
         const currentRadius = maxRadius * easedT;
 
         ctx.beginPath();
         ctx.arc(width / 2, height / 2, currentRadius, 0, Math.PI * 2);
         ctx.clip();
 
-        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale * (1.1 - 0.1 * easedT), cameraPanX, cameraPanY);
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale * (1.08 - 0.08 * easedT), cameraPanX, cameraPanY);
         ctx.restore();
 
         // Spotlight glowing border
@@ -568,9 +701,75 @@ export class DentalVideoEngine {
           ctx.strokeStyle = config.branding.accentColor || "#38bdf8";
           ctx.lineWidth = 5;
           ctx.shadowColor = config.branding.accentColor || "#38bdf8";
-          ctx.shadowBlur = 25;
+          ctx.shadowBlur = 28;
           ctx.beginPath();
           ctx.arc(width / 2, height / 2, currentRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    } else if (templateId === "dynamic-zoom") {
+      // Dynamic Zoom: Cinematic smooth continuous Ken Burns transition
+      if (images.beforeImg) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1.0 - easedT * 1.1);
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+      }
+
+      if (images.afterImg) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, easedT * 1.1);
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale * 1.04, cameraPanX, cameraPanY);
+        ctx.restore();
+      }
+    } else if (templateId === "minimal-white") {
+      // Minimal White: Crisp light border and clean soft crossfade
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(0, 0, width, height);
+
+      if (images.beforeImg) {
+        ctx.save();
+        ctx.globalAlpha = 1.0 - easedT;
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+      }
+
+      if (images.afterImg) {
+        ctx.save();
+        ctx.globalAlpha = easedT;
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+      }
+
+      // Thin minimalist border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, width - 32, height - 32);
+    } else if (templateId === "premium-dark") {
+      // Premium Dark: Obsidian frame with deep contrast and laser reveal
+      if (images.beforeImg) {
+        this.drawTransformedImage(ctx, images.beforeImg, width, height, beforeAlign, cameraScale, cameraPanX, cameraPanY);
+      }
+
+      if (images.afterImg && easedT > 0) {
+        ctx.save();
+        const wipeX = width * easedT;
+        ctx.beginPath();
+        ctx.rect(0, 0, wipeX, height);
+        ctx.clip();
+        this.drawTransformedImage(ctx, images.afterImg, width, height, afterAlign, cameraScale, cameraPanX, cameraPanY);
+        ctx.restore();
+
+        if (easedT < 1.0) {
+          ctx.save();
+          ctx.strokeStyle = "#14b8a6";
+          ctx.lineWidth = 5;
+          ctx.shadowColor = "#14b8a6";
+          ctx.shadowBlur = 24;
+          ctx.beginPath();
+          ctx.moveTo(wipeX, 0);
+          ctx.lineTo(wipeX, height);
           ctx.stroke();
           ctx.restore();
         }
@@ -602,7 +801,12 @@ export class DentalVideoEngine {
       // Vertical separator
       ctx.fillStyle = config.branding.accentColor || "#14b8a6";
       ctx.fillRect(halfW - margin / 2, 0, margin, height);
-    } else if (templateId === "glow-morph" || templateId === "social-story-reel" || templateId === "pulse-reveal") {
+    } else if (
+      templateId === "glow-morph" ||
+      templateId === "social-reel" ||
+      templateId === "social-story-reel" ||
+      templateId === "pulse-reveal"
+    ) {
       // Glow Morph / Crossfade with Enamel Shine
       if (images.beforeImg) {
         ctx.save();

@@ -4,7 +4,6 @@ import {
   Download,
   FolderArchive,
   Github,
-  Terminal,
   CheckCircle2,
   Copy,
   ExternalLink,
@@ -61,127 +60,123 @@ git remote add origin https://github.com/YOUR_USERNAME/dentpilot-smile-studio.gi
 git push -u origin main`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl flex flex-col shadow-2xl overflow-hidden max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center p-0 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-slate-950 w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl border border-teal-500/20 overflow-hidden max-h-[90vh]">
+
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900">
+        <div className="px-5 py-4 border-b border-teal-900/30 bg-teal-950/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
+            <div className="w-10 h-10 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center">
               <FolderArchive className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <span>تحميل كود المشروع ورفعه إلى GitHub</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                  Full Source Code ZIP
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <span>تصدير لـ GitHub</span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30 uppercase tracking-wider">
+                  ZIP
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
-                تنزيل كامل ملفات المشروع بصيغة ZIP ثم رفعها يدوياً لمستودع GitHub
-              </p>
+              <p className="text-[11px] text-teal-200/60 mt-0.5">تنزيل ورفع ملفات السورس كود</p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-900/50 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6 overflow-y-auto">
+        <div className="p-5 space-y-6 overflow-y-auto pb-safe">
           {/* Main Direct Download Action */}
-          <div className="p-5 rounded-xl bg-gradient-to-br from-teal-950/50 via-slate-900 to-slate-900 border border-teal-500/30 shadow-lg">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Download className="w-4 h-4 text-teal-400" />
-                  <span>الخطوة 1: تنزيل ملف المشروع المضغوط (ZIP)</span>
-                </h3>
-                <p className="text-xs text-slate-300 mt-1">
-                  يحتوي على كافة ملفات الواجهة والـ Backend (React 18 + Express + Tailwind + Vite)
-                </p>
-              </div>
-
-              <button
-                onClick={handleDownloadZip}
-                disabled={isDownloading}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
-              >
-                {isDownloading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    <span>جارٍ إنشاء الملف...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>تنزيل ملف ZIP الآن</span>
-                  </>
-                )}
-              </button>
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-950/40 to-slate-900 border border-teal-500/20 shadow-lg flex flex-col gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                <Download className="w-4 h-4 text-teal-400" />
+                الخطوة 1: تنزيل ملف المشروع (ZIP)
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                يحتوي على كافة ملفات الواجهة والـ Backend (React 18 + Express + Tailwind + Vite)
+              </p>
             </div>
+
+            <button
+              onClick={handleDownloadZip}
+              disabled={isDownloading}
+              className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50"
+            >
+              {isDownloading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                  <span>جارٍ إنشاء الملف...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 stroke-[2.5]" />
+                  <span>تنزيل ملف ZIP الآن</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* How to upload to GitHub */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-200 flex items-center gap-2">
+            <h3 className="text-xs font-bold text-slate-300 flex items-center gap-2 px-1">
               <Github className="w-4 h-4 text-white" />
-              <span>الخطوة 2: رفع المشروع على GitHub (طريقتان)</span>
+              الخطوة 2: رفع المشروع على GitHub
             </h3>
 
             {/* Method A: Web Interface Upload */}
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-300 text-[10px] flex items-center justify-center font-mono">
+                <span className="text-xs font-bold text-teal-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 text-[10px] flex items-center justify-center font-bold font-mono">
                     A
                   </span>
-                  الطريقة السهلة (مباشرة عبر متصفح GitHub)
+                  عبر متصفح GitHub
                 </span>
                 <a
                   href="https://github.com/new"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[11px] text-teal-400 hover:underline flex items-center gap-1"
+                  className="text-[10px] font-bold text-teal-400 hover:text-teal-300 flex items-center gap-1 bg-teal-950/50 px-2.5 py-1 rounded-lg transition-colors"
                 >
-                  <span>إنشاء مستودع جديد</span>
+                  إنشاء مستودع
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
 
-              <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside pr-1 leading-relaxed">
+              <ol className="text-[11px] text-slate-400 space-y-2 list-decimal list-inside leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800/50">
                 <li>
-                  فك ضغط ملف <code className="bg-slate-800 text-teal-300 px-1.5 py-0.5 rounded text-[11px]">dentpilot-smile-studio.zip</code> على سطح المكتب.
+                  فك ضغط ملف <code className="text-teal-300 font-mono text-[10px]">dentpilot.zip</code>
                 </li>
                 <li>
-                  افتح موقع <a href="https://github.com/new" target="_blank" rel="noreferrer" className="text-teal-400 underline">GitHub.com/new</a> وأنشئ مستودعاً جديداً (New Repository).
+                  افتح <a href="https://github.com/new" target="_blank" rel="noreferrer" className="text-teal-400 underline">GitHub.com/new</a> وأنشئ مستودع
                 </li>
                 <li>
-                  في صفحة المستودع، اختر <strong>"uploading an existing file"</strong> واسحب جميع الملفات المفرودة ثم اضغط <strong>Commit changes</strong>.
+                  اسحب جميع الملفات لصفحة المستودع عبر <strong>"uploading an existing file"</strong>
                 </li>
               </ol>
             </div>
 
             {/* Method B: Terminal Git Commands */}
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-slate-800 text-slate-300 text-[10px] flex items-center justify-center font-mono">
+                <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-[10px] flex items-center justify-center font-bold font-mono">
                     B
                   </span>
-                  عبر الطرفية وأوامر Git (Terminal)
+                  عبر الطرفية (Terminal)
                 </span>
                 <button
                   onClick={() => copyToClipboard(gitCommands, 2)}
-                  className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1"
+                  className="text-[10px] font-bold text-slate-400 hover:text-white flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-lg transition-colors active:scale-95"
                 >
                   {copiedStep === 2 ? (
                     <>
                       <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400">تم النسخ!</span>
+                      <span className="text-emerald-400">تم النسخ</span>
                     </>
                   ) : (
                     <>
@@ -192,7 +187,7 @@ git push -u origin main`;
                 </button>
               </div>
 
-              <div className="bg-slate-900 rounded-lg p-3 font-mono text-[11px] text-slate-300 border border-slate-800 overflow-x-auto text-left dir-ltr">
+              <div className="bg-slate-950 rounded-xl p-3 font-mono text-[10px] leading-relaxed text-slate-300 border border-slate-800/50 overflow-x-auto text-left dir-ltr">
                 <pre className="whitespace-pre">{gitCommands}</pre>
               </div>
             </div>
@@ -200,15 +195,15 @@ git push -u origin main`;
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-800 flex justify-between items-center bg-slate-900">
-          <div className="text-[11px] text-slate-400 flex items-center gap-1">
+        <div className="p-5 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4 sticky bottom-0 bg-slate-950">
+          <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 w-full sm:w-auto">
             <Code2 className="w-3.5 h-3.5 text-teal-400" />
-            <span>جاهز للتشغيل بأمر <code>npm install && npm run dev</code></span>
+            <span>جاهز للتشغيل بأمر <code>npm run dev</code></span>
           </div>
 
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold border border-slate-800 transition-colors"
           >
             إغلاق
           </button>

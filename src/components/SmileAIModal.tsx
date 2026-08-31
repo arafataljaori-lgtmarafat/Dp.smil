@@ -5,11 +5,9 @@ import {
   Copy,
   Check,
   Loader2,
-  Share2,
   FileText,
   Hash,
   Lightbulb,
-  ArrowRight,
 } from "lucide-react";
 import { PatientCase } from "../types";
 
@@ -82,190 +80,190 @@ export const SmileAIModal: React.FC<SmileAIModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center p-0 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-slate-950 w-full sm:max-w-3xl rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl border border-purple-500/20 overflow-hidden max-h-[90vh]">
+
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40">
+        <div className="px-5 py-4 border-b border-purple-900/30 bg-purple-950/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-white">Smile AI • المخرج التسويقي الذكي</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
-                  Gemini 3.7 Flash
+                <h2 className="text-base font-bold text-slate-100">Smile AI</h2>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30 uppercase tracking-wider">
+                  Gemini Flash
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                توليد نصوص ريلز وتيك توك الفيروسية والهاشتاقات واقتراح سرعة الانتقال المثالية
-              </p>
+              <p className="text-[11px] text-purple-200/60 mt-0.5">المخرج التسويقي الذكي</p>
             </div>
           </div>
-
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-900/50 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        <div className="p-5 overflow-y-auto space-y-5 pb-safe">
           {!aiData && !isLoading && (
-            <div className="text-center py-10 space-y-4 max-w-md mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400">
-                <Sparkles className="w-8 h-8 animate-pulse" />
+            <div className="text-center py-12 space-y-5 max-w-sm mx-auto">
+              <div className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+                <Sparkles className="w-10 h-10 animate-pulse" />
               </div>
-              <h3 className="text-base font-bold text-white">تحليل الحالة السريرية وصناعة المحتوى</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                يقوم الذكاء الاصطناعي بتحليل صور الحالة ({patientCase.treatmentType}) واستخراج أبرز النقاط الجمالية، مع صياغة هوك قوي للفيديو وكابشن احترافي لمنصات التواصل.
-              </p>
+              <div>
+                <h3 className="text-base font-bold text-white mb-2">تحليل الحالة السريرية</h3>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  يقوم الذكاء الاصطناعي بتحليل صور ({patientCase.treatmentType}) واستخراج النقاط الجمالية وصياغة هوك قوي وكابشن احترافي.
+                </p>
+              </div>
               <button
                 onClick={handleGenerate}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-500/25 transition-all"
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-500/25 transition-transform active:scale-[0.98]"
               >
-                بدء التحليل وصناعة المحتوى الآن
+                بدء التحليل وصناعة المحتوى
               </button>
             </div>
           )}
 
           {isLoading && (
-            <div className="text-center py-16 space-y-4">
-              <Loader2 className="w-10 h-10 animate-spin text-purple-400 mx-auto" />
-              <h3 className="text-sm font-bold text-white">جاري تحليل صور الحالة بواسطة Gemini...</h3>
-              <p className="text-xs text-slate-400">نستخرج التناسق اللثوي، تدرج اللون، وأفضل طريقة لعرض الانتقال</p>
+            <div className="text-center py-16 space-y-5">
+              <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto" />
+              <div>
+                <h3 className="text-sm font-bold text-white mb-1">جاري التحليل بواسطة Gemini...</h3>
+                <p className="text-[11px] text-slate-400">نستخرج التناسق اللثوي وتدرج اللون...</p>
+              </div>
             </div>
           )}
 
           {aiData && (
-            <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-5 animate-in fade-in duration-300">
+
               {/* 1. Viral Video Hooks */}
-              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-bold text-purple-300">
+                  <h3 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
                     <Lightbulb className="w-4 h-4 text-purple-400" />
-                    <span>عناوين وجمل البداية الخاطفة (Viral Video Hooks)</span>
-                  </div>
+                    عناوين البداية الخاطفة (Hooks)
+                  </h3>
                   <button
                     onClick={() => copyToClipboard(aiData.hooks?.join("\n"), "hooks")}
-                    className="flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300"
+                    className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 active:scale-95 transition-transform"
                   >
                     {copiedHooks ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedHooks ? "تم النسخ" : "نسخ العناوين"}</span>
+                    <span>{copiedHooks ? "تم النسخ" : "نسخ"}</span>
                   </button>
                 </div>
                 <div className="space-y-2">
                   {aiData.hooks?.map((hook: string, i: number) => (
-                    <div
-                      key={i}
-                      className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 text-xs text-white flex items-center gap-2"
-                    >
-                      <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-300 flex items-center justify-center text-[10px] font-bold">
+                    <div key={i} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex gap-3 items-start">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-[10px] font-bold mt-0.5">
                         {i + 1}
                       </span>
-                      <span>{hook}</span>
+                      <span className="text-xs text-slate-200 leading-relaxed pt-0.5">{hook}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* 2. Arabic & English Caption */}
+              {/* 2. Captions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Arabic Caption */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-teal-300 flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>الكابشن العربي (Instagram Reels)</span>
+                      كابشن الانستقرام (عربي)
                     </span>
                     <button
                       onClick={() => copyToClipboard(aiData.captionAr, "caption")}
-                      className="text-[11px] text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                      className="text-[11px] font-bold text-teal-400 hover:text-teal-300 flex items-center gap-1 active:scale-95 transition-transform"
                     >
-                      {copiedCaption ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      <span>نسخ</span>
+                      {copiedCaption ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      نسخ
                     </button>
                   </div>
-                  <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-800/60 max-h-48 overflow-y-auto">
-                    {aiData.captionAr}
-                  </p>
+                  <div className="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-3 max-h-48 overflow-y-auto">
+                    <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed">
+                      {aiData.captionAr}
+                    </p>
+                  </div>
                 </div>
 
-                {/* English Caption */}
-                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 flex flex-col h-full">
+                  <div className="flex items-center justify-between mb-3">
                     <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>الكابشن الإنجليزي (Global / English)</span>
+                      كابشن تيك توك (Global)
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed bg-slate-900 p-3 rounded-xl border border-slate-800/60 max-h-48 overflow-y-auto font-sans" dir="ltr">
-                    {aiData.captionEn}
-                  </p>
+                  <div className="flex-1 bg-slate-950 rounded-xl border border-slate-800 p-3 max-h-48 overflow-y-auto">
+                    <p className="text-xs text-slate-300 whitespace-pre-line leading-relaxed font-sans" dir="ltr">
+                      {aiData.captionEn}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* 3. Clinical Highlights & Recommendations */}
-              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-3">
-                <span className="text-xs font-bold text-indigo-300 block">
-                  ملاحظات سريرية وتوصيات إخراج الفيديو:
-                </span>
-                <p className="text-xs text-slate-300 leading-relaxed bg-indigo-950/30 border border-indigo-500/20 p-3 rounded-xl">
-                  {aiData.transitionTips}
-                </p>
-                {aiData.clinicalHighlights && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                    {aiData.clinicalHighlights.map((h: string, idx: number) => (
-                      <div key={idx} className="bg-slate-900 p-2.5 rounded-xl text-[11px] text-slate-300 border border-slate-800">
-                        {h}
-                      </div>
+              {/* 3. Clinical Notes & Hashtags */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
+                  <span className="text-xs font-bold text-indigo-300 block">توصيات إخراج الفيديو</span>
+                  <p className="text-[11px] text-slate-300 leading-relaxed bg-indigo-950/20 border border-indigo-500/20 p-3 rounded-xl">
+                    {aiData.transitionTips}
+                  </p>
+                  {aiData.clinicalHighlights && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {aiData.clinicalHighlights.map((h: string, idx: number) => (
+                        <span key={idx} className="bg-slate-950 px-2 py-1 rounded-lg text-[10px] text-slate-300 border border-slate-800">
+                          {h}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <Hash className="w-3.5 h-3.5 text-teal-400" />
+                      هاشتاقات (Trending)
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(aiData.hashtags?.join(" "), "hashtags")}
+                      className="text-[10px] font-bold text-teal-400 hover:text-teal-300 flex items-center gap-1 active:scale-95 transition-transform"
+                    >
+                      {copiedHashtags ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      نسخ
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiData.hashtags?.map((tag: string, idx: number) => (
+                      <span key={idx} className="text-[10px] px-2 py-1 rounded-lg bg-slate-950 text-teal-300 border border-slate-800 font-mono">
+                        {tag}
+                      </span>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
 
-              {/* 4. Hashtags */}
-              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Hash className="w-3.5 h-3.5 text-teal-400" />
-                    <span>الهاشتاقات المقترحة (Trending Dental Hashtags)</span>
-                  </span>
-                  <button
-                    onClick={() => copyToClipboard(aiData.hashtags?.join(" "), "hashtags")}
-                    className="text-[11px] text-teal-400 hover:text-teal-300 flex items-center gap-1"
-                  >
-                    {copiedHashtags ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>نسخ كل الهاشتاقات</span>
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {aiData.hashtags?.map((tag: string, idx: number) => (
-                    <span
-                      key={idx}
-                      className="text-[11px] px-2 py-1 rounded-lg bg-slate-900 text-teal-300 border border-slate-800 font-mono"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-800 flex justify-between items-center bg-slate-900">
-          <span className="text-[11px] text-slate-500">DentPilot Smile Studio AI Suite</span>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-teal-500 text-slate-950 font-bold text-xs shadow hover:bg-teal-400"
-          >
-            إغلاق
-          </button>
-        </div>
+        {aiData && (
+          <div className="pt-4 flex gap-3 sticky bottom-0 bg-slate-950 pb-2 px-5 border-t border-slate-900">
+            <button
+              onClick={onClose}
+              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-sm font-bold border border-slate-800 transition-colors"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

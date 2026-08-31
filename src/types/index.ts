@@ -2,13 +2,22 @@ export type AspectRatioType = "9:16" | "4:5" | "1:1" | "16:9";
 
 export type TemplateId =
   | "cinematic-reveal"
+  | "luxury-veneers"
+  | "split-compare"
+  | "vertical-curtain"
+  | "clinical-clean"
+  | "spotlight-smile"
+  | "dynamic-zoom"
+  | "social-reel"
+  | "minimal-white"
+  | "premium-dark"
   | "split-slider"
   | "spotlight-zoom"
-  | "curtain-wipe"
   | "glow-morph"
   | "dual-side-by-side"
   | "social-story-reel"
   | "pulse-reveal"
+  | "curtain-wipe"
   | "diagonal-sweep";
 
 export type TransitionType =
@@ -19,14 +28,18 @@ export type TransitionType =
   | "spotlight"
   | "crossfade"
   | "split-sweep"
+  | "soft-blur"
+  | "specular-flash"
   | "diagonal-slice";
 
 export type ZoomEffectType =
   | "zoom-in"
   | "zoom-out"
+  | "ken-burns"
   | "pan-left-to-right"
   | "pan-right-to-left"
   | "subtle-breathe"
+  | "parallax-shift"
   | "static";
 
 export type BadgeStyleType =

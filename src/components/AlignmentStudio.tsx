@@ -340,37 +340,49 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
     setIsDragging(false);
   };
 
-  // AI Smart Align handler
+  // Simulated AI Smart Align handler (since no backend is present in this iteration)
   const handleAiSmartAlign = async () => {
     if (!beforePhoto?.url || !afterPhoto?.url) return;
     setIsAiAligning(true);
     setAiMessage(null);
     try {
-      const response = await fetch("/api/ai/smart-align", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          beforeImageBase64: beforePhoto.url,
-          afterImageBase64: afterPhoto.url,
-        }),
-      });
-      const data = await response.json();
-      if (data.success && data.suggestions) {
-        const s = data.suggestions;
-        setAfterAlign((prev) => ({
-          ...prev,
-          scale: s.scaleDelta || 1.0,
-          rotation: s.rotationDelta || 0,
-          offsetX: s.offsetX || 0,
-          offsetY: s.offsetY || 0,
-        }));
-        setAiMessage(s.tips || "تمت المحاذاة الذكية تلقائياً بنجاح.");
-      }
+      // Simulate network delay for "AI processing" feel
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      // Simulated local heuristic: match scaling to default and center
+      // A more robust implementation would use client-side OpenCV.js or similar
+      setAfterAlign((prev) => ({
+        ...prev,
+        scale: beforeAlign.scale,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
+      }));
+      setBeforeAlign((prev) => ({
+        ...prev,
+        rotation: 0,
+        offsetX: 0,
+        offsetY: 0,
+      }));
+
+      setAiMessage("تم توسيط وضبط المحاذاة بنجاح (محاكاة). يرجى التأكيد يدوياً.");
     } catch (e) {
       console.warn("AI alignment error:", e);
-      setAiMessage("تم ضبط المحاذاة المركزية الافتراضية.");
+      setAiMessage("تعذر إجراء المحاذاة الذكية، يرجى الضبط يدوياً.");
     } finally {
       setIsAiAligning(false);
+    }
+  };
+
+  const handleResetAlignment = () => {
+    setCurrentAlign(() => ({ scale: 1.0, rotation: 0, offsetX: 0, offsetY: 0, flipH: false }));
+  };
+
+  const handleCopyAlignment = () => {
+    if (activeLayer === "after") {
+      setAfterAlign(beforeAlign);
+    } else {
+      setBeforeAlign(afterAlign);
     }
   };
 
@@ -391,18 +403,18 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-6xl max-h-[92vh] rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center p-0 sm:p-6 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-slate-950 w-full sm:max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[92vh] rounded-none sm:rounded-2xl flex flex-col shadow-2xl border-0 sm:border border-teal-500/20 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-teal-900/30 bg-teal-950/20 flex items-center justify-between sticky top-0 z-10 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400">
-              <Sliders className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center">
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">استوديو محاذاة وقص الصور السريرية</h2>
-              <p className="text-xs text-slate-400">
-                تطابق دقيق لمستوى الأسنان والخط المتوسط لتوليد فيديو بدون أي اهتزاز تشريحي
+              <h2 className="text-sm sm:text-lg font-bold text-slate-100">استوديو المحاذاة والقص</h2>
+              <p className="hidden sm:block text-xs text-slate-400 mt-0.5">
+                تطابق دقيق لمستوى الأسنان لتوليد فيديو بدون اهتزاز تشريحي
               </p>
             </div>
           </div>
@@ -412,69 +424,70 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
               id="btn-ai-smart-align"
               onClick={handleAiSmartAlign}
               disabled={isAiAligning}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] sm:text-xs font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50"
             >
               {isAiAligning ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4 text-purple-200" />
+                <Sparkles className="w-3.5 h-3.5 text-purple-200" />
               )}
-              <span>محاذاة ذكية بـ Smile AI</span>
+              <span className="hidden sm:inline">محاذاة ذكية</span>
+              <span className="sm:hidden">ذكية</span>
             </button>
 
             <button
               id="btn-close-align-modal"
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="w-8 h-8 rounded-full bg-slate-900/50 text-slate-400 hover:text-slate-200 flex items-center justify-center transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Content Body: Canvas on Left, Controls on Right */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
-          {/* Main Interactive Canvas (8 cols) */}
-          <div className="lg:col-span-8 bg-slate-950 p-4 flex flex-col items-center justify-center relative overflow-hidden border-b lg:border-b-0 lg:border-l border-slate-800">
+        {/* Content Body: Canvas on Top/Left, Controls on Bottom/Right */}
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+          {/* Main Interactive Canvas */}
+          <div className="w-full lg:w-2/3 xl:w-3/4 bg-slate-950 p-2 sm:p-4 flex flex-col items-center justify-center relative overflow-hidden border-b lg:border-b-0 lg:border-l border-slate-900 shrink-0 lg:shrink">
             {/* View Mode Bar on Top of Canvas */}
-            <div className="absolute top-4 z-10 flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-800">
+            <div className="absolute top-2 sm:top-4 z-10 flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl max-w-[90%] overflow-x-auto">
               <button
                 id="btn-mode-blend"
                 onClick={() => setDisplayMode("blend")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
                   displayMode === "blend"
-                    ? "bg-teal-500 text-slate-950 shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-teal-500 text-slate-950"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
-                تطابق الشفافية (Blend)
+                تطابق الشفافية
               </button>
               <button
                 id="btn-mode-split"
                 onClick={() => setDisplayMode("split")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
                   displayMode === "split"
-                    ? "bg-teal-500 text-slate-950 shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-teal-500 text-slate-950"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
-                مسطرة المقارنة (Split)
+                مسطرة المقارنة
               </button>
               <button
                 id="btn-mode-flicker"
                 onClick={() => setDisplayMode("flicker")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
                   displayMode === "flicker"
-                    ? "bg-teal-500 text-slate-950 shadow"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    ? "bg-teal-500 text-slate-950"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
-                وميض متناوب (Flicker)
+                وميض متناوب
               </button>
             </div>
 
-            {/* Canvas */}
-            <div className="relative w-full max-w-[620px] aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-slate-800 flex items-center justify-center">
+            {/* Canvas Container */}
+            <div className="relative w-full max-w-[620px] aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-slate-800 flex items-center justify-center mt-8 sm:mt-0">
               <canvas
                 ref={canvasRef}
                 width={800}
@@ -483,7 +496,26 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className="w-full h-full object-contain cursor-grab active:cursor-grabbing"
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  setIsDragging(true);
+                  setDragStart({ x: touch.clientX, y: touch.clientY });
+                }}
+                onTouchMove={(e) => {
+                  if (!isDragging) return;
+                  const touch = e.touches[0];
+                  const dx = touch.clientX - dragStart.x;
+                  const dy = touch.clientY - dragStart.y;
+                  setDragStart({ x: touch.clientX, y: touch.clientY });
+
+                  if (activeLayer === "after") {
+                    setAfterAlign((prev) => ({ ...prev, offsetX: prev.offsetX + dx, offsetY: prev.offsetY + dy }));
+                  } else {
+                    setBeforeAlign((prev) => ({ ...prev, offsetX: prev.offsetX + dx, offsetY: prev.offsetY + dy }));
+                  }
+                }}
+                onTouchEnd={() => setIsDragging(false)}
+                className="w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
               />
 
               {/* Interactive Split slider drag area */}
@@ -502,80 +534,80 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
 
             {/* AI Notification Toast */}
             {aiMessage && (
-              <div className="mt-3 px-4 py-2 rounded-xl bg-indigo-950/80 border border-indigo-500/30 text-indigo-200 text-xs flex items-center gap-2 max-w-md">
-                <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>{aiMessage}</span>
+              <div className="absolute top-14 sm:top-16 z-20 px-3 py-1.5 rounded-lg bg-indigo-950/90 border border-indigo-500/30 text-indigo-200 text-[10px] sm:text-xs flex items-center gap-1.5 max-w-[90%] shadow-lg">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span className="truncate">{aiMessage}</span>
               </div>
             )}
 
             {/* Bottom Quick Landmark Toggles */}
-            <div className="mt-3 flex items-center flex-wrap gap-2 text-xs">
+            <div className="mt-3 flex items-center justify-center flex-wrap gap-1.5 sm:gap-2 px-2">
               <button
                 id="toggle-midline"
                 onClick={() => setShowMidline(!showMidline)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-colors ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border transition-colors text-[9px] sm:text-[10px] font-bold ${
                   showMidline
                     ? "bg-red-950/60 border-red-500/40 text-red-300"
                     : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
                 }`}
               >
-                <span>خط الوسط (Midline)</span>
+                خط الوسط (Midline)
               </button>
 
               <button
                 id="toggle-incisal"
                 onClick={() => setShowIncisalPlane(!showIncisalPlane)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-colors ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border transition-colors text-[9px] sm:text-[10px] font-bold ${
                   showIncisalPlane
                     ? "bg-cyan-950/60 border-cyan-500/40 text-cyan-300"
                     : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
                 }`}
               >
-                <span>مستوى الإطباق الأفقي</span>
+                مستوى الإطباق
               </button>
 
               <button
                 id="toggle-golden"
                 onClick={() => setShowGoldenGrid(!showGoldenGrid)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-colors ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border transition-colors text-[9px] sm:text-[10px] font-bold ${
                   showGoldenGrid
                     ? "bg-amber-950/60 border-amber-500/40 text-amber-300"
                     : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
                 }`}
               >
-                <span>النسبة الذهبية (1.618)</span>
+                النسبة الذهبية
               </button>
 
               <button
                 id="toggle-grid3x3"
                 onClick={() => setShowGrid3x3(!showGrid3x3)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border transition-colors ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border transition-colors text-[9px] sm:text-[10px] font-bold ${
                   showGrid3x3
                     ? "bg-slate-800 border-slate-600 text-slate-200"
                     : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
                 }`}
               >
-                <span>شبكة 3×3</span>
+                شبكة 3×3
               </button>
             </div>
           </div>
 
-          {/* Right Controls Panel (4 cols) */}
-          <div className="lg:col-span-4 p-5 flex flex-col justify-between bg-slate-900 overflow-y-auto space-y-5">
-            <div className="space-y-4">
+          {/* Right Controls Panel (Mobile Bottom) */}
+          <div className="w-full lg:w-1/3 xl:w-1/4 p-4 flex flex-col bg-slate-900 overflow-y-auto min-h-0 pb-safe">
+            <div className="space-y-4 flex-1">
               {/* Active Layer Selector */}
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">
-                  الصورة المراد ضبطها:
+                <label className="text-[10px] sm:text-xs font-bold text-slate-400 block mb-1.5 px-1">
+                  الصورة النشطة للضبط:
                 </label>
-                <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
                   <button
                     id="layer-after"
                     onClick={() => setActiveLayer("after")}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all ${
+                    className={`py-2 px-3 text-[10px] sm:text-xs font-bold rounded-lg transition-colors ${
                       activeLayer === "after"
-                        ? "bg-emerald-500 text-slate-950 shadow"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-emerald-500 text-slate-950"
+                        : "text-slate-400 hover:text-white hover:bg-slate-900"
                     }`}
                   >
                     صورة بعد (AFTER)
@@ -583,22 +615,39 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
                   <button
                     id="layer-before"
                     onClick={() => setActiveLayer("before")}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all ${
+                    className={`py-2 px-3 text-[10px] sm:text-xs font-bold rounded-lg transition-colors ${
                       activeLayer === "before"
-                        ? "bg-rose-500 text-white shadow"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-rose-500 text-white"
+                        : "text-slate-400 hover:text-white hover:bg-slate-900"
                     }`}
                   >
                     صورة قبل (BEFORE)
+                  </button>
+                </div>
+
+                <div className="flex gap-1.5 mt-1.5">
+                  <button
+                    onClick={handleCopyAlignment}
+                    className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 rounded-lg text-[9px] sm:text-[10px] font-bold text-slate-400 transition-colors border border-slate-800 flex items-center justify-center gap-1"
+                  >
+                    <Info className="w-3 h-3" />
+                    <span>نسخ أبعاد {activeLayer === "after" ? "قبل" : "بعد"}</span>
+                  </button>
+                  <button
+                    onClick={handleResetAlignment}
+                    className="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-rose-950 rounded-lg text-[9px] sm:text-[10px] font-bold text-slate-400 hover:text-rose-400 transition-colors border border-slate-800 flex items-center justify-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>إعادة ضبط</span>
                   </button>
                 </div>
               </div>
 
               {/* Opacity Crossfader (if in blend mode) */}
               {displayMode === "blend" && (
-                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
-                  <div className="flex justify-between text-xs text-slate-300 font-medium">
-                    <span>شفافية التطابق (Overlay Opacity)</span>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex justify-between text-[10px] sm:text-xs text-slate-300 font-bold px-1">
+                    <span>شفافية التطابق</span>
                     <span className="text-teal-400 font-mono">{Math.round(overlayOpacity * 100)}%</span>
                   </div>
                   <input
@@ -610,20 +659,20 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
                     onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
                     className="w-full accent-teal-400"
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500">
+                  <div className="flex justify-between text-[9px] text-slate-500 font-bold px-1">
                     <span>قبل فقط</span>
-                    <span>تطابق 50%</span>
+                    <span>50%</span>
                     <span>بعد فقط</span>
                   </div>
                 </div>
               )}
 
               {/* Scale Control */}
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-300 font-medium">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex justify-between text-[10px] sm:text-xs text-slate-300 font-bold px-1">
                   <span className="flex items-center gap-1.5">
                     <ZoomIn className="w-3.5 h-3.5 text-teal-400" />
-                    <span>التكبير والتحجيم (Scale)</span>
+                    <span>التحجيم (Scale)</span>
                   </span>
                   <span className="text-teal-400 font-mono">{currentAlign.scale.toFixed(2)}x</span>
                 </div>
@@ -641,11 +690,11 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
               </div>
 
               {/* Rotation Control */}
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-1.5">
-                <div className="flex justify-between text-xs text-slate-300 font-medium">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex justify-between text-[10px] sm:text-xs text-slate-300 font-bold px-1">
                   <span className="flex items-center gap-1.5">
                     <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>زاوية الدوران (Rotation)</span>
+                    <span>زاوية الدوران</span>
                   </span>
                   <span className="text-cyan-400 font-mono">{currentAlign.rotation.toFixed(1)}°</span>
                 </div>
@@ -660,53 +709,48 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
                   }
                   className="w-full accent-cyan-400"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500">
-                  <span>-10°</span>
-                  <span>0°</span>
-                  <span>+10°</span>
-                </div>
               </div>
 
               {/* Pan Offset X & Y */}
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2">
-                <span className="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span className="flex items-center gap-1.5 text-[10px] sm:text-xs text-slate-300 font-bold px-1">
                   <Move className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>الإزاحة الأفقية والعمودية (Pan X / Y)</span>
+                  <span>الإزاحة (X / Y)</span>
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">أفقي X (px)</label>
+                    <label className="text-[9px] text-slate-500 block mb-1 text-center font-bold">أفقي X</label>
                     <input
                       type="number"
                       value={currentAlign.offsetX}
                       onChange={(e) =>
                         setCurrentAlign((prev) => ({ ...prev, offsetX: parseInt(e.target.value) || 0 }))
                       }
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white text-center font-mono focus:border-teal-500"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center font-mono focus:border-teal-500 outline-none transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">عمودي Y (px)</label>
+                    <label className="text-[9px] text-slate-500 block mb-1 text-center font-bold">عمودي Y</label>
                     <input
                       type="number"
                       value={currentAlign.offsetY}
                       onChange={(e) =>
                         setCurrentAlign((prev) => ({ ...prev, offsetY: parseInt(e.target.value) || 0 }))
                       }
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white text-center font-mono focus:border-teal-500"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center font-mono focus:border-teal-500 outline-none transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Utility Quick Buttons: Flip & Reset */}
-              <div className="flex gap-2">
+              {/* Utility Quick Button: Flip */}
+              <div>
                 <button
                   id="btn-flip-h"
                   onClick={() =>
                     setCurrentAlign((prev) => ({ ...prev, flipH: !prev.flipH }))
                   }
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-[10px] sm:text-xs font-bold transition-colors ${
                     currentAlign.flipH
                       ? "bg-teal-500/20 border-teal-500 text-teal-300"
                       : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
@@ -715,42 +759,25 @@ export const AlignmentStudio: React.FC<AlignmentStudioProps> = ({
                   <FlipHorizontal className="w-3.5 h-3.5" />
                   <span>عكس أفقي (Mirror)</span>
                 </button>
-
-                <button
-                  id="btn-reset-align"
-                  onClick={() =>
-                    setCurrentAlign(() => ({
-                      scale: 1.0,
-                      rotation: 0,
-                      offsetX: 0,
-                      offsetY: 0,
-                      flipH: false,
-                    }))
-                  }
-                  className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-amber-400 text-xs font-semibold transition-colors"
-                  title="إعادة تعيين القيم"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
               </div>
             </div>
 
             {/* Bottom Actions: Cancel & Save */}
-            <div className="pt-4 border-t border-slate-800 flex gap-2">
+            <div className="pt-4 mt-4 border-t border-slate-800 flex gap-2 shrink-0">
               <button
                 id="btn-cancel-align"
                 onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                className="w-1/3 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] sm:text-xs font-bold transition-colors"
               >
                 إلغاء
               </button>
               <button
                 id="btn-save-align"
                 onClick={handleSave}
-                className="flex-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold shadow-lg shadow-teal-500/25 transition-all flex items-center justify-center gap-1.5"
+                className="w-2/3 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-[11px] sm:text-xs font-bold shadow-lg shadow-teal-500/25 transition-transform active:scale-[0.98]"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>حفظ المحاذاة</span>
+                <span>حفظ التعديلات</span>
               </button>
             </div>
           </div>
