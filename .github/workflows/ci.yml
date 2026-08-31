@@ -1,0 +1,279 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_BASE_URL: http://127.0.0.1:3000/api/v1
+      DATABASE_URL: postgresql://dentpilot:dentpilot@127.0.0.1:5432/dentpilot_smile?schema=public
+      SESSION_TTL_SECONDS: "2592000"
+      EMAIL_VERIFICATION_TOKEN_TTL_SECONDS: "86400"
+      PASSWORD_RESET_TOKEN_TTL_SECONDS: "3600"
+      ARGON2_MEMORY_COST: "65536"
+      ARGON2_TIME_COST: "3"
+      ARGON2_PARALLELISM: "1"
+      S3_TEST_ENDPOINT: http://127.0.0.1:9000
+      S3_TEST_ACCESS_KEY_ID: minioadmin
+      S3_TEST_SECRET_ACCESS_KEY: minioadmin
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: dentpilot_smile
+          POSTGRES_USER: dentpilot
+          POSTGRES_PASSWORD: dentpilot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dentpilot -d dentpilot_smile"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply the full migration chain to fresh PostgreSQL
+        run: pnpm db:migrate
+      - name: Validate Prisma schema
+        run: pnpm --filter @dentpilot/api exec prisma validate
+      - name: Enforce Prisma PostgreSQL drift parity
+        working-directory: apps/api
+        run: pnpm exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: Verify Phase 4A fresh and Phase 3-to-4A upgrade migration paths
+        run: bash scripts/phase4a-verify-migrations.sh
+      - name: Seed the personal development user
+        run: pnpm db:seed
+      - name: Build shared workspace packages required by API tests
+        run: |
+          pnpm --filter @dentpilot/domain build
+          pnpm --filter @dentpilot/contracts build
+          pnpm --filter @dentpilot/application build
+      - name: Local object-storage contract tests
+        run: pnpm --filter @dentpilot/api test:storage:local
+      - name: Mandatory S3-compatible object-storage contract tests against MinIO
+        run: |
+          docker run --detach --rm --name dentpilot-minio-test \
+            --publish 9000:9000 \
+            --env MINIO_ROOT_USER=minioadmin \
+            --env MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          trap 'docker stop dentpilot-minio-test' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null
+          S3_TEST_REQUIRED=true pnpm --filter @dentpilot/api test:storage:s3
+          S3_TEST_REQUIRED=true pnpm --filter @dentpilot/api exec vitest run test/integration/media-upload-reconciler.minio-recovery.integration.test.ts
+      - name: Mandatory PostgreSQL upload-session persistence and finalization-fault tests
+        run: |
+          pnpm --filter @dentpilot/api test:upload-sessions
+          pnpm --filter @dentpilot/api exec vitest run test/integration/media-upload-finalization-faults.integration.test.ts
+          pnpm --filter @dentpilot/api exec vitest run test/integration/media-upload-reconciler.batch-drain.integration.test.ts
+      - name: Mandatory recurring reconciler scheduler, bounded batch, and streaming-route tests
+        run: pnpm --filter @dentpilot/api exec vitest run test/media-upload-recovery.bootstrap.test.ts test/media-upload-reconciler.batch-drain.test.ts test/media-controller.streaming-static.test.ts test/streaming-media-ingest-spool-cleanup.test.ts
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit and application tests
+        run: pnpm test
+      - name: Mandatory PostgreSQL integration tests
+        run: pnpm test:integration
+      - name: Phase 2A.2 authenticated HTTP acceptance
+        run: |
+          rm -rf /tmp/dentpilot-phase2a2-outbox
+          API_PORT=3009 \
+          EMAIL_DELIVERY_MODE=development \
+          DEVELOPMENT_EMAIL_OUTBOX_ROOT=/tmp/dentpilot-phase2a2-outbox \
+          AUTH_RATE_LIMIT_WINDOW_SECONDS=10 \
+          AUTH_RATE_LIMIT_REGISTER_IP_MAX=100 \
+          AUTH_RATE_LIMIT_LOGIN_IP_MAX=100 \
+          AUTH_RATE_LIMIT_VERIFY_IP_MAX=100 \
+          AUTH_RATE_LIMIT_RESET_IP_MAX=100 \
+          pnpm --filter @dentpilot/api dev > /tmp/dentpilot-phase2a2-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3009/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3009/api/v1/health >/dev/null
+          PHASE2A2_API_BASE=http://127.0.0.1:3009/api/v1 PHASE2A2_OUTBOX=/tmp/dentpilot-phase2a2-outbox node scripts/phase2a2-http-security-probe.mjs
+          PHASE2A2_API_BASE=http://127.0.0.1:3009/api/v1 PHASE2A2_OUTBOX=/tmp/dentpilot-phase2a2-outbox node scripts/phase2a2-auth-walking-skeleton.mjs
+          PHASE2A2_API_BASE=http://127.0.0.1:3009/api/v1 PHASE2A2_OUTBOX=/tmp/dentpilot-phase2a2-outbox node scripts/phase2a2-auth-concurrency.mjs
+      - name: Phase 2B mobile authentication verification
+        run: |
+          pnpm --filter @dentpilot/mobile lint
+          pnpm --filter @dentpilot/mobile typecheck
+          pnpm --filter @dentpilot/mobile test
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile build
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile exec expo config --type public --json > /tmp/dentpilot-phase2b-expo-config.json
+          node -e 'const c=require("/tmp/dentpilot-phase2b-expo-config.json"); if(c.scheme!=="dentpilot" || !c.plugins.includes("expo-secure-store") || !c.android?.intentFilters?.some((f)=>f.data?.some((d)=>d.scheme==="dentpilot"))) process.exit(1);'
+          pnpm --filter @dentpilot/domain build
+          pnpm --filter @dentpilot/contracts build
+          pnpm --filter @dentpilot/application build
+          rm -rf /tmp/dentpilot-phase2b-outbox
+          API_PORT=3010 \
+          EMAIL_DELIVERY_MODE=development \
+          DEVELOPMENT_EMAIL_OUTBOX_ROOT=/tmp/dentpilot-phase2b-outbox \
+          AUTH_ACTION_URL_BASE=dentpilot://auth/action \
+          AUTH_RATE_LIMIT_WINDOW_SECONDS=10 \
+          AUTH_RATE_LIMIT_REGISTER_IP_MAX=100 \
+          AUTH_RATE_LIMIT_LOGIN_IP_MAX=100 \
+          AUTH_RATE_LIMIT_VERIFY_IP_MAX=100 \
+          AUTH_RATE_LIMIT_RESET_IP_MAX=100 \
+          pnpm --filter @dentpilot/api dev > /tmp/dentpilot-phase2b-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3010/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3010/api/v1/health >/dev/null
+          PHASE2B_API_BASE=http://127.0.0.1:3010/api/v1 PHASE2B_OUTBOX=/tmp/dentpilot-phase2b-outbox node scripts/phase2b-mobile-api-walking-skeleton.mjs
+          PHASE2_SECURITY_API_BASE=http://127.0.0.1:3010/api/v1 PHASE2_SECURITY_OUTBOX=/tmp/dentpilot-phase2b-outbox node scripts/phase2-security-closure-disabled-account-http.mjs
+      - name: Phase 3B authenticated streaming-ingest and media-read acceptance
+        run: |
+          rm -rf /tmp/dentpilot-phase3b-spool /tmp/dentpilot-phase3b-objects apps/api/.local/email-outbox
+          API_PORT=3011 \
+          API_HOST=127.0.0.1 \
+          OBJECT_STORAGE_DRIVER=local \
+          LOCAL_OBJECT_STORAGE_ROOT=/tmp/dentpilot-phase3b-objects \
+          MEDIA_TEMP_ROOT=/tmp/dentpilot-phase3b-spool \
+          MEDIA_TEMP_CLEANUP_AGE_SECONDS=60 \
+          AUTH_RATE_LIMIT_WINDOW_SECONDS=10 \
+          AUTH_RATE_LIMIT_REGISTER_IP_MAX=100 \
+          AUTH_RATE_LIMIT_LOGIN_IP_MAX=100 \
+          AUTH_RATE_LIMIT_VERIFY_IP_MAX=100 \
+          pnpm --filter @dentpilot/api dev > /tmp/dentpilot-phase3b-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3011/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3011/api/v1/health >/dev/null
+          BASE_URL=http://127.0.0.1:3011 bash scripts/phase3b-http-smoke.sh
+          BASE_URL=http://127.0.0.1:3011 bash scripts/phase3b-http-cross-user-isolation.sh
+          BASE_URL=http://127.0.0.1:3011 MEDIA_TEMP_ROOT=/tmp/dentpilot-phase3b-spool LOCAL_OBJECT_STORAGE_ROOT=/tmp/dentpilot-phase3b-objects bash scripts/phase3b-http-malformed-media.sh
+      - name: Phase 3C mobile media workflow and real MinIO acceptance
+        run: |
+          pnpm --filter @dentpilot/mobile lint
+          pnpm --filter @dentpilot/mobile typecheck
+          pnpm --filter @dentpilot/mobile test -- phase3c-media-upload-orchestrator.test.ts
+          pnpm --filter @dentpilot/mobile test
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3012/api/v1 pnpm --filter @dentpilot/mobile exec expo config --type public --json > /tmp/dentpilot-phase3c-expo-config.json
+          node scripts/phase3c-verify-expo-config.mjs /tmp/dentpilot-phase3c-expo-config.json
+          rm -rf /tmp/dentpilot-phase3c-android-export
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3012/api/v1 pnpm --filter @dentpilot/mobile exec expo export --platform android --output-dir /tmp/dentpilot-phase3c-android-export
+          docker run --detach --rm --name dentpilot-phase3c-minio \
+            --publish 9000:9000 \
+            --env MINIO_ROOT_USER=minioadmin \
+            --env MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null
+          S3_ENDPOINT=http://127.0.0.1:9000 S3_REGION=us-east-1 S3_BUCKET=dentpilot-phase3c-e2e S3_FORCE_PATH_STYLE=true S3_ACCESS_KEY_ID=minioadmin S3_SECRET_ACCESS_KEY=minioadmin pnpm --dir apps/api exec node scripts/create-phase3c-minio-bucket.mjs
+          rm -rf /tmp/dentpilot-phase3c-outbox
+          mkdir -p /tmp/dentpilot-phase3c-outbox
+          API_PORT=3012 \
+          API_HOST=127.0.0.1 \
+          EMAIL_DELIVERY_MODE=development \
+          DEVELOPMENT_EMAIL_OUTBOX_ROOT=/tmp/dentpilot-phase3c-outbox \
+          OBJECT_STORAGE_DRIVER=s3 \
+          S3_ENDPOINT=http://127.0.0.1:9000 \
+          S3_REGION=us-east-1 \
+          S3_BUCKET=dentpilot-phase3c-e2e \
+          S3_FORCE_PATH_STYLE=true \
+          S3_ACCESS_KEY_ID=minioadmin \
+          S3_SECRET_ACCESS_KEY=minioadmin \
+          AUTH_RATE_LIMIT_WINDOW_SECONDS=10 \
+          AUTH_RATE_LIMIT_REGISTER_IP_MAX=100 \
+          AUTH_RATE_LIMIT_LOGIN_IP_MAX=100 \
+          AUTH_RATE_LIMIT_VERIFY_IP_MAX=100 \
+          pnpm --filter @dentpilot/api dev > /tmp/dentpilot-phase3c-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true; docker stop dentpilot-phase3c-minio 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null && curl --fail --silent http://127.0.0.1:3012/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null
+          curl --fail --silent http://127.0.0.1:3012/api/v1/health >/dev/null
+          PHASE3C_API_BASE=http://127.0.0.1:3012/api/v1 PHASE3C_OUTBOX=/tmp/dentpilot-phase3c-outbox node scripts/phase3c-real-media-workflow.mjs
+      - name: Phase 4A Creation PostgreSQL concurrency and immutable provenance
+        run: pnpm --filter @dentpilot/api exec vitest run test/integration/creation-domain.integration.test.ts
+      - name: Phase 4A Creation owner-scoped HTTP acceptance
+        run: |
+          rm -rf /tmp/dentpilot-phase4a-spool /tmp/dentpilot-phase4a-objects /tmp/dentpilot-phase4a-outbox
+          mkdir -p /tmp/dentpilot-phase4a-outbox
+          API_PORT=3013 \
+          API_HOST=127.0.0.1 \
+          EMAIL_DELIVERY_MODE=development \
+          DEVELOPMENT_EMAIL_OUTBOX_ROOT=/tmp/dentpilot-phase4a-outbox \
+          OBJECT_STORAGE_DRIVER=local \
+          LOCAL_OBJECT_STORAGE_ROOT=/tmp/dentpilot-phase4a-objects \
+          MEDIA_TEMP_ROOT=/tmp/dentpilot-phase4a-spool \
+          AUTH_RATE_LIMIT_WINDOW_SECONDS=10 \
+          AUTH_RATE_LIMIT_REGISTER_IP_MAX=100 \
+          AUTH_RATE_LIMIT_LOGIN_IP_MAX=100 \
+          AUTH_RATE_LIMIT_VERIFY_IP_MAX=100 \
+          pnpm --filter @dentpilot/api dev > /tmp/dentpilot-phase4a-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3013/api/v1/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3013/api/v1/health >/dev/null
+          PHASE4A_API_BASE=http://127.0.0.1:3013/api/v1 PHASE4A_OUTBOX=/tmp/dentpilot-phase4a-outbox node scripts/phase4a-creations-http.mjs
+      - name: Phase 4B versioned templates, composition engine, and native renderer foundation
+        run: |
+          pnpm --filter @dentpilot/application test -- template-composition.test.ts
+          pnpm --filter @dentpilot/mobile lint
+          pnpm --filter @dentpilot/mobile typecheck
+          pnpm --filter @dentpilot/mobile test -- phase4b-native-composition-preview.test.tsx
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile exec expo config --type public --json > /tmp/dentpilot-phase4b-expo-config.json
+          node -e 'const c=require("/tmp/dentpilot-phase4b-expo-config.json"); if(!c.ios?.bundleIdentifier || !c.android?.package) process.exit(1);'
+          rm -rf /tmp/dentpilot-phase4b-android /tmp/dentpilot-phase4b-ios /tmp/dentpilot-phase4b-web
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile exec expo export --platform android --output-dir /tmp/dentpilot-phase4b-android
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile exec expo export --platform ios --output-dir /tmp/dentpilot-phase4b-ios
+          EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/api/v1 pnpm --filter @dentpilot/mobile exec expo export --platform web --output-dir /tmp/dentpilot-phase4b-web
+          test -f /tmp/dentpilot-phase4b-android/metadata.json
+          test -f /tmp/dentpilot-phase4b-ios/metadata.json
+          test -f /tmp/dentpilot-phase4b-web/creations/[creationId].html
+      - name: Phase 4 Closure Stage 1 render, state, privacy, memory, and lifecycle gates
+        run: |
+          pnpm --filter @dentpilot/mobile lint
+          pnpm --filter @dentpilot/mobile typecheck
+          pnpm --filter @dentpilot/mobile test -- --runInBand \
+            __tests__/phase4c-editor-autosave.test.ts \
+            __tests__/phase4c-editor-operations.test.ts \
+            __tests__/phase4b-native-composition-preview.test.tsx \
+            __tests__/phase4c-composition-export.test.ts \
+            __tests__/phase4-closure-preview-cache.test.ts \
+            __tests__/phase4-closure-offscreen-export.test.ts \
+            __tests__/phase4-closure-authoritative-export.test.ts \
+            __tests__/phase4-stage1-final-micro-closure-query-cache.test.ts \
+            __tests__/phase4-closure-binding-checkpoint.test.ts \
+            __tests__/phase4-closure-use-creation-editor-lifecycle.test.tsx \
+            __tests__/phase4-closure-composition-error-boundary.test.tsx \
+            __tests__/phase4-closure-auth-cache-invalidation.test.ts
+      - name: Build
+        run: pnpm build

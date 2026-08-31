@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "DentPilot Smile Studio",
+    "slug": "dentpilot-smile-studio",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "dentpilot",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow DentPilot to select a patient photograph.",
+          "cameraPermission": "Allow DentPilot to take a patient photograph.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Allow DentPilot to save an exported dental composition to your photo library.",
+          "granularPermissions": ["photo"]
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "android": {
+      "package": "com.dentpilot.smilestudio",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "dentpilot" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.dentpilot.smilestudio"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    }
+  }
+}
