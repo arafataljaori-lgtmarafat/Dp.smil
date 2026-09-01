@@ -9,9 +9,6 @@ import {
   type CaseDto,
   type GenerationStatusResponse,
   type WorkspaceDto,
-  videoCreationDetailsSchema,
-  videoCreationDraftSchema,
-  videoCreationRevisionSchema,
 } from '@dentpilot/contracts';
 import { z } from 'zod';
 
@@ -23,10 +20,10 @@ const caseListSchema = z.object({ cases: z.array(caseSchema) });
 const idSchema = z.object({ id: z.string().uuid() });
 const generationRequestSchema = z.object({ id: z.string().uuid(), created: z.boolean() });
 const creationListSchema = z.object({ data: z.array(creationDetailsSchema.shape.project) });
-const creationBindingsResponseSchema = z.object({ data: z.union([creationBindingMutationSchema, z.object({ bindings: z.array(z.any()), draft: videoCreationDraftSchema })]) });
-const creationDraftResponseSchema = z.object({ data: z.union([creationDraftSchema, videoCreationDraftSchema]) });
-const creationRevisionResponseSchema = z.object({ data: z.union([creationRevisionSchema, videoCreationRevisionSchema]) });
-const creationRevisionListSchema = z.object({ data: z.array(z.union([creationRevisionSchema.omit({ bindings: true }), videoCreationRevisionSchema.omit({ bindings: true })])) });
+const creationBindingsResponseSchema = z.object({ data: creationBindingMutationSchema });
+const creationDraftResponseSchema = z.object({ data: creationDraftSchema });
+const creationRevisionResponseSchema = z.object({ data: creationRevisionSchema });
+const creationRevisionListSchema = z.object({ data: z.array(creationRevisionSchema.omit({ bindings: true })) });
 
 export const dentPilotApi = {
   async listCases(): Promise<readonly CaseDto[]> {
@@ -80,7 +77,7 @@ export const dentPilotApi = {
   },
 
   getCreation(creationId: string) {
-    return apiRequest(`/creations/${creationId}`, { method: 'GET' }, z.union([creationDetailsSchema, videoCreationDetailsSchema]), { protected: true });
+    return apiRequest(`/creations/${creationId}`, { method: 'GET' }, creationDetailsSchema, { protected: true });
   },
 
   replaceCreationBindings(creationId: string, expectedRevision: number, bindings: readonly { readonly bindingKey: 'before' | 'after'; readonly mediaId: string }[]) {

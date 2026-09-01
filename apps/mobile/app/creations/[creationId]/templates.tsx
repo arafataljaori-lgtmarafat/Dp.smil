@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -32,8 +31,8 @@ export default function TemplateGalleryScreen(): React.JSX.Element {
   const select = useMutation({
     mutationFn: async (template: (typeof builtInTemplateCatalog)[number]) => {
       if (creation.data === undefined) throw new Error('Creation is unavailable.');
-      const next = switchTemplate(creation.data.draft.document as any, template);
-      return dentPilotApi.saveCreationDraft(creationId, creation.data.draft.revision, next as any);
+      const next = switchTemplate(creation.data.draft.document, template);
+      return dentPilotApi.saveCreationDraft(creationId, creation.data.draft.revision, next);
     },
     onSuccess: (saved) => {
       applySavedCreationDraftToCache(queryClient, creationId, saved.data);
@@ -53,7 +52,6 @@ export default function TemplateGalleryScreen(): React.JSX.Element {
 
   if (creation.isPending) return <LoadingState label="Loading template gallery…" />;
   if (creation.data === undefined) return <ErrorState detail="This creation is unavailable." onRetry={() => void creation.refetch()} />;
-  if (creation.data.project.type === 'before_after_video') return <ErrorState detail="Video templates are not supported here yet." onRetry={() => router.back()} />;
   const selected = creation.data.draft.document.templateRef === null ? null : `${creation.data.draft.document.templateRef.templateId}@${creation.data.draft.document.templateRef.templateVersion}`;
   return (
     <Screen>
@@ -61,8 +59,8 @@ export default function TemplateGalleryScreen(): React.JSX.Element {
         <View style={styles.card}><Text style={styles.label}>PREMIUM TEMPLATE GALLERY</Text><Text style={styles.body}>Published versioned compositions only. Choosing a card saves one deliberate draft checkpoint.</Text></View>
         {builtInTemplateCatalog.map((template) => {
           const identity = `${template.id}@${template.version}`;
-          const previewDocument = switchTemplate(creation.data.draft.document as any, template);
-          const preview = assets.length === template.slots.length ? createRenderPlanForDocument({ document: previewDocument as any, bindings: assets, target: { width: 180, height: 225 } }) : null;
+          const previewDocument = switchTemplate(creation.data.draft.document, template);
+          const preview = assets.length === template.slots.length ? createRenderPlanForDocument({ document: previewDocument, bindings: assets, target: { width: 180, height: 225 } }) : null;
           return <View key={identity} style={styles.card}>
             {preview === null ? <View accessibilityLabel={`${template.displayName} preview unavailable until both photos are selected`} style={{ height: 150, backgroundColor: '#EEF1F2', borderRadius: 8, justifyContent: 'center' }}><Text style={styles.muted}>Private thumbnail appears after both photos are selected.</Text></View> : <NativeCompositionPreview plan={preview} width={180} height={150} accessibilityLabel={`${template.displayName} template preview`} />}
             <Text style={styles.stateTitle}>{template.displayName}</Text>

@@ -80,7 +80,8 @@ function dependencies(storedJob: GenerationJobRecord, options: Options = {}) {
         return { ...storedJob, status: 'failed' as const, errorCode: code };
       },
     } as never,
-    audits: { append: async (event: { readonly eventType: string }) => { audits.push(event.eventType); } } as never,
+    audits: { append: async (event: { readonly eventType: string }) => { audits.push(event.eventType); }, listByCase: async () => [] },
+    videoExports: {} as any as never,
   };
   const uow: UnitOfWorkPort = {
     ...ports,

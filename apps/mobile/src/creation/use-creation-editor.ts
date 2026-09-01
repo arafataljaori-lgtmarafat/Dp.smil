@@ -1,40 +1,38 @@
-import type { CreationDocument, VideoCompositionDocument } from '@dentpilot/contracts';
-/* eslint-disable */
+import type { CreationDocument } from '@dentpilot/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { dentPilotApi, MobileApiError } from '../api/client';
 import { createEditorAutosave, type EditorPersistenceState, type SavedDraftAcknowledgement } from './editor-autosave';
 
-type AnyDocument = CreationDocument | VideoCompositionDocument;
-type EditorCoordinator<T extends AnyDocument> = ReturnType<typeof createEditorAutosave<T>>;
-type UseCreationEditorInput<T extends AnyDocument> = {
+type EditorCoordinator = ReturnType<typeof createEditorAutosave>;
+type UseCreationEditorInput = {
   readonly creationId: string;
-  readonly initialDocument: T;
+  readonly initialDocument: CreationDocument;
   readonly initialRevision: number;
   /** Account identity that owns this mounted editing session; null disposes all work. */
   readonly identityKey: string | null;
-  readonly onSaved?: (saved: SavedDraftAcknowledgement<T>) => void;
+  readonly onSaved?: (saved: SavedDraftAcknowledgement) => void;
 };
 
-export function useCreationEditor<T extends AnyDocument>(input: UseCreationEditorInput<T>) {
-  const [persistence, setPersistence] = useState<EditorPersistenceState<T>>({
+export function useCreationEditor(input: UseCreationEditorInput) {
+  const [persistence, setPersistence] = useState<EditorPersistenceState>({
     phase: 'clean', document: input.initialDocument, serverRevision: input.initialRevision, localVersion: 0,
   });
-  const coordinator = useRef<{ readonly creationId: string; readonly value: EditorCoordinator<T> } | null>(null);
+  const coordinator = useRef<{ readonly creationId: string; readonly value: EditorCoordinator } | null>(null);
   const onSavedRef = useRef(input.onSaved);
 
   useEffect(() => {
     onSavedRef.current = input.onSaved;
   }, [input.onSaved]);
 
-  const createCoordinator = useCallback((creationId: string, initialDocument: T, initialRevision: number): EditorCoordinator<T> => createEditorAutosave<T>({
+  const createCoordinator = useCallback((creationId: string, initialDocument: CreationDocument, initialRevision: number): EditorCoordinator => createEditorAutosave({
     creationId,
     initialDocument,
     initialRevision,
     api: {
       saveDraft: async (draftCreationId, expectedRevision, document) => {
         const result = await dentPilotApi.saveCreationDraft(draftCreationId, expectedRevision, document);
-        return result.data as any;
+        return result.data;
       },
     },
     isConflict: (error) => error instanceof MobileApiError && error.code === 'CREATION_REVISION_CONFLICT',
@@ -67,14 +65,14 @@ export function useCreationEditor<T extends AnyDocument>(input: UseCreationEdito
   }, [input.creationId, input.identityKey, input.initialDocument, input.initialRevision]);
 
   const current = coordinator.current?.creationId === input.creationId ? coordinator.current.value : null;
-  const edit = useCallback((next: T): void => {
+  const edit = useCallback((next: CreationDocument): void => {
     const value = coordinator.current?.value;
     if (value === undefined) return;
     value.edit(next);
   }, []);
-  const flush = useCallback(async (): Promise<EditorPersistenceState<T> | null> => coordinator.current?.value.flush() ?? null, []);
-  const retry = useCallback(async (): Promise<EditorPersistenceState<T> | null> => coordinator.current?.value.retry() ?? null, []);
-  const reload = useCallback((document: T, revision: number): void => coordinator.current?.value.replaceFromServer(document, revision), []);
+  const flush = useCallback(async (): Promise<EditorPersistenceState | null> => coordinator.current?.value.flush() ?? null, []);
+  const retry = useCallback(async (): Promise<EditorPersistenceState | null> => coordinator.current?.value.retry() ?? null, []);
+  const reload = useCallback((document: CreationDocument, revision: number): void => coordinator.current?.value.replaceFromServer(document, revision), []);
 
   return {
     persistence,

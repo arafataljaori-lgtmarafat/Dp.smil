@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@dentpilot/contracts": "workspace:*",
-    "@dentpilot/domain": "workspace:*"
+    "@dentpilot/domain": "workspace:*",
+    "@napi-rs/canvas": "^1.0.8"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

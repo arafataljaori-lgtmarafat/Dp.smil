@@ -1,3 +1,8 @@
+
+export interface HeadlessRendererPort {
+  /** Renders a composition plan to a raw RGBA byte buffer of width x height */
+  renderFrame(plan: RenderPlan, width: number, height: number): Promise<Uint8Array>;
+}
 import type { CreationBindingKey, CreationDocument, VideoCompositionDocument, VideoTemplateDefinition } from '@dentpilot/contracts';
 import type {
   ActorContext,
@@ -6,7 +11,7 @@ import type {
   MediaKind,
 } from '@dentpilot/domain';
 
-import type { CreationRenderAsset, RenderTarget } from './composition-engine.js';
+import type { CreationRenderAsset, RenderTarget, RenderPlan } from './composition-engine.js';
 import type { VideoRenderPlanAtTime } from './video-composition-engine.js';
 
 export type ProvenanceParameters = Readonly<Record<string, string | number | boolean | null>>;
@@ -338,6 +343,7 @@ export interface TransactionPorts {
   readonly generations: GenerationRepositoryPort;
   readonly uploadSessions: MediaUploadSessionRepositoryPort;
   readonly audits: AuditRepositoryPort;
+  readonly videoExports: VideoExportRepositoryPort;
 }
 
 export interface UnitOfWorkPort extends TransactionPorts {
@@ -536,4 +542,43 @@ export interface VideoExportRendererPort {
     readonly assets: readonly CreationRenderAsset[];
     readonly target: RenderTarget;
   }): Promise<{ readonly outputUri: string; readonly durationMs: number }>;
+}
+
+export type VideoExportStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+export type VideoExportJobData = {
+  readonly id: string;
+  readonly ownerUserId: string;
+  readonly projectId: string;
+  readonly revisionId: string;
+  readonly templateId: string;
+  readonly templateVersion: number;
+  readonly requestFingerprint: string;
+  readonly rendererContractVersion: number;
+  readonly status: VideoExportStatus;
+  readonly createdAt: Date;
+};
+
+export type VideoExportVersionData = {
+  readonly id: string;
+  readonly ownerUserId: string;
+  readonly exportJobId: string;
+  readonly versionNumber: number;
+  readonly mediaAssetId: string | null;
+  readonly createdAt: Date;
+};
+
+export interface VideoExportRepositoryPort {
+  insertJobAndVersion(job: VideoExportJobData, version: VideoExportVersionData): Promise<void>;
+  findJobByFingerprint(fingerprint: string): Promise<VideoExportJobData | null>;
+  findById(jobId: string): Promise<VideoExportJobData | null>;
+  findLatestVersion(jobId: string): Promise<VideoExportVersionData | null>;
+  updateJobStatus(jobId: string, status: VideoExportStatus): Promise<void>;
+  attachMediaToVersion(versionId: string, mediaAssetId: string): Promise<void>;
+  updateVersionStatus(versionId: string, status: VideoExportStatus): Promise<void>;
+}
+
+export interface VideoExportQueuePort {
+  dispatchExport(jobId: string): Promise<void>;
+  consumeExports(handler: (jobId: string) => Promise<void>): void;
 }

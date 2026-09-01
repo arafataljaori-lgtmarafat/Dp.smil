@@ -1,36 +1,29 @@
-/* eslint-disable */
-import type { CreationDocument, CreationDraftDto, VideoCompositionDocument } from '@dentpilot/contracts';
-
-type AnyDocument = CreationDocument | VideoCompositionDocument;
+import type { CreationDocument, CreationDraftDto } from '@dentpilot/contracts';
 
 export type EditorPersistencePhase = 'clean' | 'dirty' | 'saving' | 'saved' | 'save-error' | 'conflict';
 
-export type EditorPersistenceState<T extends AnyDocument = CreationDocument> = {
+export type EditorPersistenceState = {
   readonly phase: EditorPersistencePhase;
-  readonly document: T;
+  readonly document: CreationDocument;
   readonly serverRevision: number;
   readonly localVersion: number;
   readonly message?: string;
 };
 
-export type SavedDraftAcknowledgement<T extends AnyDocument = CreationDocument> = {
-  readonly revision: number;
-  readonly document: T;
-  readonly updatedAt: string;
-};
-type SaveResult<T extends AnyDocument> = SavedDraftAcknowledgement<T>;
-type AutosaveApi<T extends AnyDocument = CreationDocument> = {
-  saveDraft(creationId: string, expectedRevision: number, document: T): Promise<SaveResult<T>>;
+export type SavedDraftAcknowledgement = Pick<CreationDraftDto, 'revision' | 'document' | 'updatedAt'>;
+type SaveResult = SavedDraftAcknowledgement;
+type AutosaveApi = {
+  saveDraft(creationId: string, expectedRevision: number, document: CreationDocument): Promise<SaveResult>;
 };
 type ScheduledHandle = ReturnType<typeof setTimeout> | number;
-type EditorAutosaveOptions<T extends AnyDocument = CreationDocument> = {
+type EditorAutosaveOptions = {
   readonly creationId: string;
-  readonly initialDocument: T;
+  readonly initialDocument: CreationDocument;
   readonly initialRevision: number;
-  readonly api: AutosaveApi<T>;
-  readonly onState: (state: EditorPersistenceState<T>) => void;
+  readonly api: AutosaveApi;
+  readonly onState: (state: EditorPersistenceState) => void;
   /** Runs after acknowledged document/revision are applied, immediately before `saved` is published. */
-  readonly onAcknowledgedSave?: (saved: SavedDraftAcknowledgement<T>) => void;
+  readonly onAcknowledgedSave?: (saved: SavedDraftAcknowledgement) => void;
   readonly debounceMs?: number;
   readonly schedule?: (callback: () => void, delayMs: number) => ScheduledHandle;
   readonly cancel?: (handle: ScheduledHandle) => void;
@@ -46,7 +39,7 @@ export const editorAutosavePolicy = {
  * serialized against the server's expectedRevision, and completion applies only to the captured
  * local version so a newer gesture/end-edit cannot be marked clean by an older response.
  */
-export function createEditorAutosave<T extends AnyDocument = CreationDocument>(options: EditorAutosaveOptions<T>) {
+export function createEditorAutosave(options: EditorAutosaveOptions) {
   const debounceMs = options.debounceMs ?? editorAutosavePolicy.debounceMs;
   const schedule = options.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
   const cancel = options.cancel ?? ((handle) => clearTimeout(handle));
@@ -57,8 +50,8 @@ export function createEditorAutosave<T extends AnyDocument = CreationDocument>(o
   let timer: ScheduledHandle | null = null;
   let disposed = false;
   let generation = 0;
-  let flushPromise: Promise<EditorPersistenceState<T>> | null = null;
-  let state: EditorPersistenceState<T> = { phase: 'clean', document, serverRevision, localVersion };
+  let flushPromise: Promise<EditorPersistenceState> | null = null;
+  let state: EditorPersistenceState = { phase: 'clean', document, serverRevision, localVersion };
 
   const publish = (phase: EditorPersistencePhase, message?: string): void => {
     if (disposed) return;
@@ -80,12 +73,12 @@ export function createEditorAutosave<T extends AnyDocument = CreationDocument>(o
     }, debounceMs);
   };
 
-  const flush = (): Promise<EditorPersistenceState<T>> => {
+  const flush = (): Promise<EditorPersistenceState> => {
     clearTimer();
     if (disposed || state.phase === 'clean' || state.phase === 'saved' || state.phase === 'conflict') return Promise.resolve(state);
     if (flushPromise !== null) return flushPromise;
 
-    const work = async (): Promise<EditorPersistenceState<T>> => {
+    const work = async (): Promise<EditorPersistenceState> => {
       // A local edit arriving during a save is persisted by the next serialized iteration. This
       // means Save Version and binding changes wait for a durable latest-document checkpoint.
       while (!disposed && state.phase !== 'clean' && state.phase !== 'saved' && state.phase !== 'conflict') {
@@ -99,7 +92,7 @@ export function createEditorAutosave<T extends AnyDocument = CreationDocument>(o
           if (disposed || generationAtStart !== generation) return state;
           serverRevision = saved.revision;
           if (versionAtStart === localVersion) {
-            document = saved.document as T;
+            document = saved.document;
             options.onAcknowledgedSave?.(saved);
             publish('saved');
             return state;
@@ -119,7 +112,7 @@ export function createEditorAutosave<T extends AnyDocument = CreationDocument>(o
     return flushPromise;
   };
 
-  const edit = (nextDocument: T): void => {
+  const edit = (nextDocument: CreationDocument): void => {
     if (disposed) return;
     document = nextDocument;
     localVersion += 1;
@@ -127,7 +120,7 @@ export function createEditorAutosave<T extends AnyDocument = CreationDocument>(o
     if (flushPromise === null) scheduleLatest();
   };
 
-  const replaceFromServer = (nextDocument: T, nextRevision: number): void => {
+  const replaceFromServer = (nextDocument: CreationDocument, nextRevision: number): void => {
     if (disposed) return;
     clearTimer();
     generation += 1;

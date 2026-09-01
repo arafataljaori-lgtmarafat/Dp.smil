@@ -13,3 +13,9 @@ export * from './video-composition-engine.js';
 export * from './video-template-catalog.js';
 export * from './video-export-identity.js';
 export * from './video-creation-document.js';
+
+export * from './headless-renderer.js';
+export * from './video-encoder.js';
+export * from './video-export-worker.js';
+export * from './http-smile-simulation-provider.js';
+export * from './video-export-service.js';

@@ -62,118 +62,121 @@ enum AuditActorType {
 }
 
 model User {
-  id                 String              @id @default(uuid()) @db.Uuid
-  email              String
-  normalizedEmail    String              @unique(map: "users_normalizedEmail_key")
-  displayName        String
-  status             UserStatus          @default(pending_verification)
-  emailVerifiedAt    DateTime?           @db.Timestamptz(3)
-  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
-  ownedCases         PatientCase[]       @relation("OwnedCases")
-  ownedMedia         MediaAsset[]        @relation("OwnedMedia")
-  ownedProjects      CreationProject[]   @relation("OwnedProjects")
-  ownedJobs          GenerationJob[]     @relation("OwnedJobs")
-  ownedVersions      GenerationVersion[]    @relation("OwnedVersions")
-  ownedAuditEvents   AuditEvent[]           @relation("OwnedAuditEvents")
-  ownedUploadSessions MediaUploadSession[] @relation("OwnedUploadSessions")
-  ownedCreationDrafts CreationDraft[] @relation("OwnedCreationDrafts")
-  ownedCreationRevisions CreationRevision[] @relation("OwnedCreationRevisions")
-  createdCases       PatientCase[]       @relation("CaseCreator")
-  createdMedia       MediaAsset[]        @relation("MediaCreator")
-  createdProjects    CreationProject[]   @relation("ProjectCreator")
-  humanAuditEvents   AuditEvent[]        @relation("AuditHumanActor")
-  passwordCredential PasswordCredential?
-  authSessions       AuthSession[]
-  actionTokens       AccountActionToken[]
-  securityEvents     SecurityEvent[]
+  id                     String               @id @default(uuid()) @db.Uuid
+  email                  String
+  normalizedEmail        String               @unique(map: "users_normalizedEmail_key")
+  displayName            String
+  status                 UserStatus           @default(pending_verification)
+  emailVerifiedAt        DateTime?            @db.Timestamptz(3)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @default(now()) @updatedAt @db.Timestamptz(3)
+  ownedCases             PatientCase[]        @relation("OwnedCases")
+  ownedMedia             MediaAsset[]         @relation("OwnedMedia")
+  ownedProjects          CreationProject[]    @relation("OwnedProjects")
+  ownedJobs              GenerationJob[]      @relation("OwnedJobs")
+  ownedVersions          GenerationVersion[]  @relation("OwnedVersions")
+  ownedAuditEvents       AuditEvent[]         @relation("OwnedAuditEvents")
+  ownedUploadSessions    MediaUploadSession[] @relation("OwnedUploadSessions")
+  ownedCreationDrafts    CreationDraft[]      @relation("OwnedCreationDrafts")
+  ownedCreationRevisions CreationRevision[]   @relation("OwnedCreationRevisions")
+  createdCases           PatientCase[]        @relation("CaseCreator")
+  createdMedia           MediaAsset[]         @relation("MediaCreator")
+  createdProjects        CreationProject[]    @relation("ProjectCreator")
+  humanAuditEvents       AuditEvent[]         @relation("AuditHumanActor")
+  passwordCredential     PasswordCredential?
+  authSessions           AuthSession[]
+  actionTokens           AccountActionToken[]
+  securityEvents         SecurityEvent[]
+  videoExportJobs        VideoExportJob[]     @relation("OwnedVideoExportJobs")
+  videoExportVersions    VideoExportVersion[] @relation("OwnedVideoExportVersions")
 
   @@map("users")
 }
 
 model PatientCase {
-  id             String            @id @default(uuid()) @db.Uuid
-  ownerUserId    String            @db.Uuid
-  displayLabel   String
-  referenceCode  String?
-  status         CaseStatus        @default(active)
-  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
-  createdById    String            @db.Uuid
-  owner          User              @relation("OwnedCases", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  createdBy      User              @relation("CaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  mediaAssets    MediaAsset[]      @relation("CaseMedia")
-  projects       CreationProject[] @relation("CaseProjects")
-  generationJobs GenerationJob[]   @relation("CaseGenerationJobs")
-  auditEvents    AuditEvent[]         @relation("CaseAuditEvents")
-  uploadSessions MediaUploadSession[] @relation("CaseUploadSessions")
-  creationDrafts CreationDraft[] @relation("CaseCreationDrafts")
-  creationRevisions CreationRevision[] @relation("CaseCreationRevisions")
+  id                String               @id @default(uuid()) @db.Uuid
+  ownerUserId       String               @db.Uuid
+  displayLabel      String
+  referenceCode     String?
+  status            CaseStatus           @default(active)
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime             @updatedAt @db.Timestamptz(3)
+  createdById       String               @db.Uuid
+  owner             User                 @relation("OwnedCases", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  createdBy         User                 @relation("CaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  mediaAssets       MediaAsset[]         @relation("CaseMedia")
+  projects          CreationProject[]    @relation("CaseProjects")
+  generationJobs    GenerationJob[]      @relation("CaseGenerationJobs")
+  auditEvents       AuditEvent[]         @relation("CaseAuditEvents")
+  uploadSessions    MediaUploadSession[] @relation("CaseUploadSessions")
+  creationDrafts    CreationDraft[]      @relation("CaseCreationDrafts")
+  creationRevisions CreationRevision[]   @relation("CaseCreationRevisions")
 
-  @@index([ownerUserId, createdAt])
   @@unique([ownerUserId, id])
+  @@index([ownerUserId, createdAt])
   @@map("cases")
 }
 
 model MediaAsset {
-  id                       String              @id @default(uuid()) @db.Uuid
-  ownerUserId              String              @db.Uuid
-  caseId                   String              @db.Uuid
-  kind                     MediaKind
-  purpose                  MediaPurpose
-  mimeType                 String
-  byteSize                 Int
-  width                    Int
-  height                   Int
-  sha256                   String              @db.Char(64)
-  storageKey               String              @unique
-  sourceMediaId            String?             @db.Uuid
-  createdAt                DateTime            @default(now()) @db.Timestamptz(3)
-  createdById              String              @db.Uuid
-  owner                    User                @relation("OwnedMedia", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  patientCase              PatientCase         @relation("CaseMedia", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
-  sourceMedia              MediaAsset?         @relation("MediaLineage", fields: [ownerUserId, sourceMediaId], references: [ownerUserId, id], onDelete: Restrict)
-  sourceMediaWithinCase    MediaAsset?         @relation("MediaLineageWithinCase", fields: [ownerUserId, caseId, sourceMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
-  derivedAssets            MediaAsset[]        @relation("MediaLineage")
-  derivedAssetsWithinCase  MediaAsset[]        @relation("MediaLineageWithinCase")
-  createdBy                User                @relation("MediaCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  projectSources           CreationProject[]   @relation("ProjectSource")
-  projectSourcesWithinCase CreationProject[]   @relation("ProjectSourceWithinCase")
-  generationSources        GenerationJob[]     @relation("GenerationSource")
-  generationOutputs        GenerationVersion[] @relation("GenerationOutput")
-  generationOutputsWithinGraph GenerationVersion[] @relation("GenerationVersionOutputGraph")
-  generationVersionSources GenerationVersion[] @relation("GenerationVersionSource")
-  committedUploadSessions MediaUploadSession[] @relation("CommittedUploadMedia")
-  creationAssetBindings CreationAssetBinding[] @relation("CreationBindingMedia")
-  creationRevisionAssets CreationRevisionAsset[] @relation("CreationRevisionAssetMedia")
+  id                           String                  @id @default(uuid()) @db.Uuid
+  ownerUserId                  String                  @db.Uuid
+  caseId                       String                  @db.Uuid
+  kind                         MediaKind
+  purpose                      MediaPurpose
+  mimeType                     String
+  byteSize                     Int
+  width                        Int
+  height                       Int
+  sha256                       String                  @db.Char(64)
+  storageKey                   String                  @unique
+  sourceMediaId                String?                 @db.Uuid
+  createdAt                    DateTime                @default(now()) @db.Timestamptz(3)
+  createdById                  String                  @db.Uuid
+  owner                        User                    @relation("OwnedMedia", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  patientCase                  PatientCase             @relation("CaseMedia", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  sourceMedia                  MediaAsset?             @relation("MediaLineage", fields: [ownerUserId, sourceMediaId], references: [ownerUserId, id], onDelete: Restrict)
+  sourceMediaWithinCase        MediaAsset?             @relation("MediaLineageWithinCase", fields: [ownerUserId, caseId, sourceMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  derivedAssets                MediaAsset[]            @relation("MediaLineage")
+  derivedAssetsWithinCase      MediaAsset[]            @relation("MediaLineageWithinCase")
+  createdBy                    User                    @relation("MediaCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  projectSources               CreationProject[]       @relation("ProjectSource")
+  projectSourcesWithinCase     CreationProject[]       @relation("ProjectSourceWithinCase")
+  generationSources            GenerationJob[]         @relation("GenerationSource")
+  generationOutputs            GenerationVersion[]     @relation("GenerationOutput")
+  generationOutputsWithinGraph GenerationVersion[]     @relation("GenerationVersionOutputGraph")
+  generationVersionSources     GenerationVersion[]     @relation("GenerationVersionSource")
+  committedUploadSessions      MediaUploadSession[]    @relation("CommittedUploadMedia")
+  creationAssetBindings        CreationAssetBinding[]  @relation("CreationBindingMedia")
+  creationRevisionAssets       CreationRevisionAsset[] @relation("CreationRevisionAssetMedia")
+  videoExportVersions          VideoExportVersion[]
 
-  @@index([ownerUserId, caseId, createdAt])
-  @@index([ownerUserId, sha256])
   @@unique([ownerUserId, id])
   @@unique([ownerUserId, caseId, id])
   @@unique([ownerUserId, caseId, sourceMediaId, id])
+  @@index([ownerUserId, caseId, createdAt])
+  @@index([ownerUserId, sha256])
   @@map("media_assets")
 }
 
 model MediaUploadSession {
-  id               String                   @id @default(uuid()) @db.Uuid
-  ownerUserId      String                   @db.Uuid
-  caseId           String                   @db.Uuid
-  idempotencyKey   String
-  status           MediaUploadSessionStatus @default(created)
-  createdAt        DateTime                 @default(now()) @db.Timestamptz(3)
-  startedAt        DateTime?                @db.Timestamptz(3)
-  finishedAt       DateTime?                @db.Timestamptz(3)
-  expiresAt        DateTime                 @db.Timestamptz(3)
-  processingToken  String?
-  targetMediaId    String?                  @db.Uuid
-  targetStorageKey String?
-  committedMediaId String?                  @db.Uuid
-  errorCode        String?
-  storageCleanupPending Boolean              @default(false)
-  owner            User                     @relation("OwnedUploadSessions", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  patientCase      PatientCase              @relation("CaseUploadSessions", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
-  committedMedia   MediaAsset?              @relation("CommittedUploadMedia", fields: [ownerUserId, caseId, committedMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  id                    String                   @id @default(uuid()) @db.Uuid
+  ownerUserId           String                   @db.Uuid
+  caseId                String                   @db.Uuid
+  idempotencyKey        String
+  status                MediaUploadSessionStatus @default(created)
+  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
+  startedAt             DateTime?                @db.Timestamptz(3)
+  finishedAt            DateTime?                @db.Timestamptz(3)
+  expiresAt             DateTime                 @db.Timestamptz(3)
+  processingToken       String?
+  targetMediaId         String?                  @db.Uuid
+  targetStorageKey      String?
+  committedMediaId      String?                  @db.Uuid
+  errorCode             String?
+  storageCleanupPending Boolean                  @default(false)
+  owner                 User                     @relation("OwnedUploadSessions", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  patientCase           PatientCase              @relation("CaseUploadSessions", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  committedMedia        MediaAsset?              @relation("CommittedUploadMedia", fields: [ownerUserId, caseId, committedMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
 
   @@unique([ownerUserId, caseId, idempotencyKey])
   @@unique([ownerUserId, id])
@@ -186,51 +189,52 @@ model MediaUploadSession {
 }
 
 model CreationProject {
-  id             String            @id @default(uuid()) @db.Uuid
-  ownerUserId    String            @db.Uuid
-  caseId         String            @db.Uuid
-  type           CreationProjectType
-  sourceMediaId  String            @db.Uuid
-  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
-  createdById    String            @db.Uuid
+  id                        String                 @id @default(uuid()) @db.Uuid
+  ownerUserId               String                 @db.Uuid
+  caseId                    String                 @db.Uuid
+  type                      CreationProjectType
+  sourceMediaId             String                 @db.Uuid
+  createdAt                 DateTime               @default(now()) @db.Timestamptz(3)
+  createdById               String                 @db.Uuid
   // Phase 5 Stage 2 production creation idempotency. Null for every project type that
   // does not require idempotent creation (image, smile simulation): Postgres treats each
   // NULL in a unique index as distinct, so those rows never collide with one another or
   // with anything else. Populated only by before_after_video creation.
-  // Uniqueness is owner-scoped (ownerUserId, idempotencyKey) — not case-scoped — because
+  // Uniqueness is owner-scoped (ownerUserId, idempotencyKey) â€” not case-scoped â€” because
   // the request fingerprint already encodes caseId: reusing the same key against a
   // different case must produce IdempotencyConflictError, not a second graph.
-  idempotencyKey String?
-  requestFingerprint String?       @db.Char(64)
-  owner          User              @relation("OwnedProjects", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  patientCase    PatientCase       @relation("CaseProjects", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
-  sourceMedia    MediaAsset        @relation("ProjectSource", fields: [ownerUserId, sourceMediaId], references: [ownerUserId, id], onDelete: Restrict)
-  sourceMediaWithinCase MediaAsset @relation("ProjectSourceWithinCase", fields: [ownerUserId, caseId, sourceMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
-  createdBy      User              @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  generationJobs GenerationJob[]   @relation("ProjectGenerationJobs")
-  generationJobsWithinGraph GenerationJob[] @relation("JobProjectGraph")
-  auditEvents    AuditEvent[]      @relation("AuditProject")
-  auditEventsWithinGraph AuditEvent[] @relation("AuditProjectGraph")
-  draft CreationDraft? @relation("ProjectCreationDraft")
-  assetBindings CreationAssetBinding[] @relation("ProjectCreationAssetBindings")
-  creationRevisions CreationRevision[] @relation("ProjectCreationRevisions")
+  idempotencyKey            String?
+  requestFingerprint        String?                @db.Char(64)
+  owner                     User                   @relation("OwnedProjects", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  patientCase               PatientCase            @relation("CaseProjects", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  sourceMedia               MediaAsset             @relation("ProjectSource", fields: [ownerUserId, sourceMediaId], references: [ownerUserId, id], onDelete: Restrict)
+  sourceMediaWithinCase     MediaAsset             @relation("ProjectSourceWithinCase", fields: [ownerUserId, caseId, sourceMediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  createdBy                 User                   @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  generationJobs            GenerationJob[]        @relation("ProjectGenerationJobs")
+  generationJobsWithinGraph GenerationJob[]        @relation("JobProjectGraph")
+  auditEvents               AuditEvent[]           @relation("AuditProject")
+  auditEventsWithinGraph    AuditEvent[]           @relation("AuditProjectGraph")
+  draft                     CreationDraft?         @relation("ProjectCreationDraft")
+  assetBindings             CreationAssetBinding[] @relation("ProjectCreationAssetBindings")
+  creationRevisions         CreationRevision[]     @relation("ProjectCreationRevisions")
+  videoExportJobs           VideoExportJob[]       @relation("ProjectVideoExportJobs")
 
-  @@index([ownerUserId, caseId, createdAt])
   @@unique([ownerUserId, id])
   @@unique([ownerUserId, caseId, id])
   @@unique([ownerUserId, caseId, id, sourceMediaId])
   @@unique([ownerUserId, idempotencyKey])
+  @@index([ownerUserId, caseId, createdAt])
   @@map("creation_projects")
 }
 
 model CreationAssetBinding {
-  projectId   String @db.Uuid
-  ownerUserId String @db.Uuid
-  caseId      String @db.Uuid
+  projectId   String          @db.Uuid
+  ownerUserId String          @db.Uuid
+  caseId      String          @db.Uuid
   bindingKey  String
-  mediaId     String @db.Uuid
+  mediaId     String          @db.Uuid
   project     CreationProject @relation("ProjectCreationAssetBindings", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Cascade)
-  media       MediaAsset @relation("CreationBindingMedia", fields: [ownerUserId, caseId, mediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  media       MediaAsset      @relation("CreationBindingMedia", fields: [ownerUserId, caseId, mediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
 
   @@id([projectId, bindingKey])
   @@index([ownerUserId, caseId, mediaId])
@@ -238,17 +242,17 @@ model CreationAssetBinding {
 }
 
 model CreationDraft {
-  projectId      String @id @db.Uuid
-  ownerUserId    String @db.Uuid
-  caseId         String @db.Uuid
-  schemaVersion  Int
-  document       Json
-  revision       Int @default(1)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
-  project        CreationProject @relation("ProjectCreationDraft", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Cascade)
-  owner          User @relation("OwnedCreationDrafts", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  patientCase    PatientCase @relation("CaseCreationDrafts", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  projectId     String          @id @db.Uuid
+  ownerUserId   String          @db.Uuid
+  caseId        String          @db.Uuid
+  schemaVersion Int
+  document      Json
+  revision      Int             @default(1)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
+  project       CreationProject @relation("ProjectCreationDraft", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Cascade)
+  owner         User            @relation("OwnedCreationDrafts", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  patientCase   PatientCase     @relation("CaseCreationDrafts", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
 
   @@unique([ownerUserId, caseId, projectId])
   @@index([ownerUserId, caseId, updatedAt])
@@ -256,18 +260,18 @@ model CreationDraft {
 }
 
 model CreationRevision {
-  id                    String @id @default(uuid()) @db.Uuid
-  ownerUserId           String @db.Uuid
-  caseId                String @db.Uuid
-  projectId             String @db.Uuid
+  id                    String                  @id @default(uuid()) @db.Uuid
+  ownerUserId           String                  @db.Uuid
+  caseId                String                  @db.Uuid
+  projectId             String                  @db.Uuid
   revisionNumber        Int
   documentSchemaVersion Int
   document              Json
-  documentSha256        String @db.Char(64)
-  createdAt             DateTime @default(now()) @db.Timestamptz(3)
-  project               CreationProject @relation("ProjectCreationRevisions", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Restrict)
-  owner                 User @relation("OwnedCreationRevisions", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  patientCase           PatientCase @relation("CaseCreationRevisions", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  documentSha256        String                  @db.Char(64)
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  project               CreationProject         @relation("ProjectCreationRevisions", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  owner                 User                    @relation("OwnedCreationRevisions", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  patientCase           PatientCase             @relation("CaseCreationRevisions", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
   assets                CreationRevisionAsset[] @relation("RevisionCreationAssets")
 
   @@unique([projectId, revisionNumber])
@@ -277,14 +281,14 @@ model CreationRevision {
 }
 
 model CreationRevisionAsset {
-  revisionId  String @db.Uuid
-  ownerUserId String @db.Uuid
-  caseId      String @db.Uuid
-  projectId   String @db.Uuid
+  revisionId  String           @db.Uuid
+  ownerUserId String           @db.Uuid
+  caseId      String           @db.Uuid
+  projectId   String           @db.Uuid
   bindingKey  String
-  mediaId     String @db.Uuid
+  mediaId     String           @db.Uuid
   revision    CreationRevision @relation("RevisionCreationAssets", fields: [ownerUserId, caseId, projectId, revisionId], references: [ownerUserId, caseId, projectId, id], onDelete: Restrict)
-  media       MediaAsset @relation("CreationRevisionAssetMedia", fields: [ownerUserId, caseId, mediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  media       MediaAsset       @relation("CreationRevisionAssetMedia", fields: [ownerUserId, caseId, mediaId], references: [ownerUserId, caseId, id], onDelete: Restrict)
 
   @@id([revisionId, bindingKey])
   @@index([ownerUserId, caseId, mediaId])
@@ -318,12 +322,12 @@ model GenerationJob {
   auditEventsWithinGraph    AuditEvent[]        @relation("AuditJobGraph")
 
   @@unique([ownerUserId, projectId, idempotencyKey])
-  @@index([ownerUserId, requestFingerprint])
-  @@index([ownerUserId, caseId, createdAt])
-  @@index([ownerUserId, status, createdAt])
   @@unique([ownerUserId, id])
   @@unique([ownerUserId, caseId, projectId, id])
   @@unique([ownerUserId, id, caseId, projectId, sourceMediaId], map: "generation_jobs_ownerUserId_id_caseId_projectId_sourceMediaId_k")
+  @@index([ownerUserId, requestFingerprint])
+  @@index([ownerUserId, caseId, createdAt])
+  @@index([ownerUserId, status, createdAt])
   @@map("generation_jobs")
 }
 
@@ -360,9 +364,9 @@ model PasswordCredential {
   passwordHash       String
   passwordChangedAt  DateTime @db.Timestamptz(3)
   credentialRevision Int      @default(1)
-  createdAt         DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime @default(now()) @updatedAt @db.Timestamptz(3)
-  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("password_credentials")
 }
@@ -383,60 +387,59 @@ model AuthSession {
 }
 
 model AccountActionToken {
-  id         String                     @id @db.Uuid
-  userId     String                     @db.Uuid
+  id         String                    @id @db.Uuid
+  userId     String                    @db.Uuid
   purpose    AccountActionTokenPurpose
-  tokenHash  String                     @unique(map: "account_action_tokens_tokenHash_key") @db.Char(64)
-  createdAt  DateTime                   @default(now()) @db.Timestamptz(3)
-  expiresAt  DateTime                   @db.Timestamptz(3)
-  consumedAt DateTime?                  @db.Timestamptz(3)
-  revokedAt  DateTime?                  @db.Timestamptz(3)
-  user       User                       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  tokenHash  String                    @unique(map: "account_action_tokens_tokenHash_key") @db.Char(64)
+  createdAt  DateTime                  @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime                  @db.Timestamptz(3)
+  consumedAt DateTime?                 @db.Timestamptz(3)
+  revokedAt  DateTime?                 @db.Timestamptz(3)
+  user       User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, purpose, expiresAt])
   @@map("account_action_tokens")
 }
 
 model SecurityEvent {
-  id         String    @id @db.Uuid
-  userId     String?   @db.Uuid
+  id         String   @id @db.Uuid
+  userId     String?  @db.Uuid
   eventType  String
-  occurredAt DateTime  @db.Timestamptz(3)
+  occurredAt DateTime @db.Timestamptz(3)
   requestId  String
-  metadata   Json      @default("{}")
-  user       User?     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  metadata   Json     @default("{}")
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, occurredAt])
   @@map("security_events")
 }
 
 model AuditEvent {
-  id                        String           @id @default(uuid()) @db.Uuid
-  ownerUserId               String           @db.Uuid
-  actorType                 AuditActorType
-  actorUserId               String?          @db.Uuid
-  systemActorKey            String?
-  eventType                 String
-  caseId                    String?          @db.Uuid
-  projectId                 String?          @db.Uuid
-  generationJobId           String?          @db.Uuid
-  occurredAt                DateTime         @db.Timestamptz(3)
-  correlationId             String
-  metadata                  Json
-  owner                     User             @relation("OwnedAuditEvents", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  actorUser                 User?            @relation("AuditHumanActor", fields: [actorUserId], references: [id], onDelete: Restrict)
-  patientCase               PatientCase?     @relation("CaseAuditEvents", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
-  project                   CreationProject? @relation("AuditProject", fields: [ownerUserId, projectId], references: [ownerUserId, id], onDelete: Restrict)
-  generationJob             GenerationJob?   @relation("AuditGenerationJob", fields: [ownerUserId, generationJobId], references: [ownerUserId, id], onDelete: Restrict)
-  projectWithinGraph        CreationProject? @relation("AuditProjectGraph", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Restrict)
-  generationJobWithinGraph  GenerationJob?   @relation("AuditJobGraph", fields: [ownerUserId, caseId, projectId, generationJobId], references: [ownerUserId, caseId, projectId, id], onDelete: Restrict)
+  id                       String           @id @default(uuid()) @db.Uuid
+  ownerUserId              String           @db.Uuid
+  actorType                AuditActorType
+  actorUserId              String?          @db.Uuid
+  systemActorKey           String?
+  eventType                String
+  caseId                   String?          @db.Uuid
+  projectId                String?          @db.Uuid
+  generationJobId          String?          @db.Uuid
+  occurredAt               DateTime         @db.Timestamptz(3)
+  correlationId            String
+  metadata                 Json
+  owner                    User             @relation("OwnedAuditEvents", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  actorUser                User?            @relation("AuditHumanActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  patientCase              PatientCase?     @relation("CaseAuditEvents", fields: [ownerUserId, caseId], references: [ownerUserId, id], onDelete: Restrict)
+  project                  CreationProject? @relation("AuditProject", fields: [ownerUserId, projectId], references: [ownerUserId, id], onDelete: Restrict)
+  generationJob            GenerationJob?   @relation("AuditGenerationJob", fields: [ownerUserId, generationJobId], references: [ownerUserId, id], onDelete: Restrict)
+  projectWithinGraph       CreationProject? @relation("AuditProjectGraph", fields: [ownerUserId, caseId, projectId], references: [ownerUserId, caseId, id], onDelete: Restrict)
+  generationJobWithinGraph GenerationJob?   @relation("AuditJobGraph", fields: [ownerUserId, caseId, projectId, generationJobId], references: [ownerUserId, caseId, projectId, id], onDelete: Restrict)
 
   @@index([ownerUserId, caseId, occurredAt])
   @@index([ownerUserId, generationJobId, occurredAt])
   @@index([ownerUserId, actorUserId, occurredAt])
   @@map("audit_events")
 }
-
 
 model AuthRateLimitBucket {
   scope       String
@@ -448,4 +451,46 @@ model AuthRateLimitBucket {
   @@id([scope, keyHash, windowStart])
   @@index([scope, keyHash, windowEnd], map: "auth_rate_limit_buckets_lookup_idx")
   @@map("auth_rate_limit_buckets")
+}
+
+enum VideoExportStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+model VideoExportJob {
+  id                      String            @id @default(uuid()) @db.Uuid
+  ownerUserId             String            @db.Uuid
+  projectId               String            @db.Uuid
+  revisionId              String            @db.Uuid
+  templateId              String
+  templateVersion         Int
+  requestFingerprint      String            @unique @db.Char(64)
+  rendererContractVersion Int
+  status                  VideoExportStatus @default(queued)
+  createdAt               DateTime          @default(now()) @db.Timestamptz(3)
+  startedAt               DateTime?         @db.Timestamptz(3)
+  finishedAt              DateTime?         @db.Timestamptz(3)
+  errorCode               String?
+
+  owner    User                 @relation("OwnedVideoExportJobs", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  project  CreationProject      @relation("ProjectVideoExportJobs", fields: [projectId], references: [id], onDelete: Restrict)
+  versions VideoExportVersion[]
+}
+
+model VideoExportVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  ownerUserId   String   @db.Uuid
+  exportJobId   String   @db.Uuid
+  mediaAssetId  String?  @db.Uuid
+  versionNumber Int
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  owner User           @relation("OwnedVideoExportVersions", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  job   VideoExportJob @relation(fields: [exportJobId], references: [id], onDelete: Cascade)
+  media MediaAsset?    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@unique([exportJobId, versionNumber])
 }

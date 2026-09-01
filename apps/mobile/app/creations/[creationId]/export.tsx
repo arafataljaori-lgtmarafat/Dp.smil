@@ -1,6 +1,5 @@
-/* eslint-disable */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, Text, View } from 'react-native';
 
@@ -27,8 +26,7 @@ export default function CompositionExportScreen(): React.JSX.Element {
   useEffect(() => {
     if (account === null || creation.data === undefined) return;
     let alive = true;
-    const uniqueMediaIds = Array.from(new Set(creation.data.bindings.map((b) => b.mediaId)));
-    void Promise.all(uniqueMediaIds.map(async (mediaId) => [mediaId, await loadPrivatePreview({ accountId: account.id, mediaId })] as const)).then((items) => { if (alive) setPreviewUris(Object.fromEntries(items)); }).catch(() => { if (alive) setMessage('Private media could not be prepared for this export.'); });
+    void Promise.all(creation.data.bindings.map(async (binding) => [binding.mediaId, await loadPrivatePreview({ accountId: account.id, mediaId: binding.mediaId })] as const)).then((items) => { if (alive) setPreviewUris(Object.fromEntries(items)); }).catch(() => { if (alive) setMessage('Private media could not be prepared for this export.'); });
     return () => { alive = false; };
   }, [account, creation.data]);
   const plan = useMemo(() => {
@@ -39,7 +37,7 @@ export default function CompositionExportScreen(): React.JSX.Element {
       return media === undefined || source === undefined ? [] : [{ bindingKey: binding.bindingKey, mediaId: media.id, width: media.width, height: media.height, source }];
     });
     const preset = presetForAspectRatio(creation.data.draft.document.canvas.aspectRatioKey);
-    return assets.length !== creation.data.bindings.length ? null : createRenderPlanForDocument({ document: creation.data.draft.document as any, bindings: assets, target: preset });
+    return assets.length !== creation.data.bindings.length ? null : createRenderPlanForDocument({ document: creation.data.draft.document, bindings: assets, target: preset });
   }, [creation.data, previewUris, workspace.data]);
   const exportImage = useCallback(async () => {
     if (Platform.OS === 'web') { setMessage('Native image export is unavailable on web. The protected web preview remains read-only.'); return; }
@@ -47,7 +45,7 @@ export default function CompositionExportScreen(): React.JSX.Element {
     try {
       const jpegBytes = await renderAuthoritativeCompositionExport({
         accountId: account.id,
-        document: creation.data.draft.document as any,
+        document: creation.data.draft.document,
         bindings: creation.data.bindings,
         media: workspace.data.media,
         target: presetForAspectRatio(creation.data.draft.document.canvas.aspectRatioKey),
@@ -62,8 +60,7 @@ export default function CompositionExportScreen(): React.JSX.Element {
   const save = useCallback(async () => { if (exported === null) return; try { await saveCompositionToLibrary(exported.uri); setMessage('Composition saved to your photo library.'); } catch { setMessage('Saving to the photo library was not completed.'); } }, [exported]);
   const share = useCallback(async () => { if (exported === null) return; try { await shareComposition(exported.uri); setMessage('System share sheet opened for the composition JPEG.'); } catch { setMessage('Sharing is unavailable or was not completed.'); } }, [exported]);
   if (creation.isPending) return <LoadingState label="Loading export…" />;
-  if (creation.data === undefined || workspace.data === undefined) return <ErrorState detail="This creation is unavailable." onRetry={() => void creation.refetch()} />;
-  if (creation.data.project.type === 'before_after_video') return <ErrorState detail="Video export is not supported here." onRetry={() => router.back()} />;
+  if (creation.data === undefined) return <ErrorState detail="This creation is unavailable." onRetry={() => void creation.refetch()} />;
   if (plan === null) return <Screen><View style={styles.card}><Text style={styles.label}>EXPORT COMPOSITION</Text><Text style={styles.body}>Choose both photos and a template before export.</Text></View></Screen>;
   const displayWidth = 270; const displayHeight = Math.round(displayWidth * plan.canvas.height / plan.canvas.width);
   return <Screen><ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 32 }}><View style={styles.card}><Text style={styles.label}>COMPOSITION-ONLY EXPORT</Text><Text style={styles.body}>{plan.canvas.width} × {plan.canvas.height} JPEG · no editor controls, selection overlays, source metadata, or patient identifiers.</Text><NativeCompositionPreview plan={plan} width={displayWidth} height={displayHeight} accessibilityLabel="Composition export preview" /><PrimaryButton label={exported === null ? 'Create JPEG export' : 'Create new JPEG export'} onPress={() => void exportImage()} />{exported !== null ? <View style={{ gap: 8 }}><PrimaryButton label="Save to photo library" onPress={() => void save()} /><PrimaryButton label="Share JPEG" onPress={() => void share()} /></View> : null}{message !== null ? <Text style={styles.muted}>{message}</Text> : null}<PrimaryButton label="Clean temporary exports" onPress={() => { if (account !== null) void cleanupCompositionExports(account.id).then(() => setMessage('Old temporary export files were cleaned.')); }} /></View></ScrollView></Screen>;

@@ -4,6 +4,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import type {
   AuditEventRecord,
   AuditRepositoryPort,
+  VideoExportRepositoryPort,
   CaseRecord,
   CaseRepositoryPort,
   CreationAssetBindingRecord,
@@ -180,6 +181,8 @@ class PrismaPorts implements TransactionPorts {
   public readonly generations: GenerationRepositoryPort;
   public readonly uploadSessions: MediaUploadSessionRepositoryPort;
   public readonly audits: AuditRepositoryPort;
+
+    public readonly videoExports: VideoExportRepositoryPort;
 
   public constructor(private readonly client: PrismaExecutor) {
     this.cases = {
@@ -699,7 +702,17 @@ class PrismaPorts implements TransactionPorts {
       },
     };
 
-    this.audits = {
+    
+      this.videoExports = {
+        insertJobAndVersion: async () => {},
+        findJobByFingerprint: async () => null,
+        findById: async () => null,
+        findLatestVersion: async () => null,
+        updateJobStatus: async () => {},
+        updateVersionStatus: async () => {},
+        attachMediaToVersion: async () => {},
+      };
+      this.audits = {
       append: async (input) => {
         await this.client.auditEvent.create({
           data: {

@@ -1,6 +1,7 @@
 import { Module, type DynamicModule } from '@nestjs/common';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { LoggerModule, PinoLogger } from 'nestjs-pino';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import type { AppConfig } from './config/app-config.js';
 import { AuthenticationGuard } from './common/authentication.guard.js';
@@ -11,6 +12,7 @@ import { MediaController } from './controllers/media.controller.js';
 import { MediaUploadsController } from './controllers/media-uploads.controller.js';
 import { ProjectsController } from './controllers/projects.controller.js';
 import { GenerationsController } from './controllers/generations.controller.js';
+import { AiWebhookController } from './controllers/ai-webhook.controller.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { AccountController } from './controllers/account.controller.js';
 import { SharpMediaInspectorAdapter, NodeSha256Adapter } from './infrastructure/media/media-inspector.adapter.js';
@@ -60,6 +62,10 @@ export class AppModule {
             },
           },
         }),
+        ThrottlerModule.forRoot([{
+          ttl: 60000,
+          limit: 100,
+        }]),
       ],
       controllers: [
         HealthController,
@@ -69,6 +75,7 @@ export class AppModule {
         MediaUploadsController,
         ProjectsController,
         GenerationsController,
+    AiWebhookController,
         AuthController,
         AccountController,
       ],
@@ -143,6 +150,10 @@ export class AppModule {
           provide: APP_GUARD,
           inject: [Reflector, AuthService],
           useFactory: (reflector: Reflector, auth: AuthService) => new AuthenticationGuard(reflector, auth),
+        },
+        {
+          provide: APP_GUARD,
+          useClass: ThrottlerGuard,
         },
         {
           provide: infrastructureTokens.queue,

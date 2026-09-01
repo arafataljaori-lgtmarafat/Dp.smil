@@ -245,6 +245,7 @@ function makeUnitOfWork(store: Store): UnitOfWorkPort {
       append: async (input) => { arrayPush(store.audits, input, undoLog); },
       listByCase: async (ownerUserId, caseId) => store.audits.filter((a) => a.ownerUserId === ownerUserId && a.caseId === caseId),
     },
+    videoExports: {} as any,
   });
 
   return {

@@ -14,7 +14,7 @@ const base: CreationDocument = {
   slotState: { before: { panX: 0, panY: 0, scale: 1, rotation: 0 }, after: { panX: 0, panY: 0, scale: 1, rotation: 0 } },
   editableTextState: { beforeLabel: 'Before', afterLabel: 'After' }, styleState: { theme: 'clinical-neutral' },
 };
-type Editor = ReturnType<typeof useCreationEditor<CreationDocument>>;
+type Editor = ReturnType<typeof useCreationEditor>;
 
 function Harness({ identityKey, onEditor, onState }: { readonly identityKey: string | null; readonly onEditor: (editor: Editor) => void; readonly onState: () => void }): React.JSX.Element {
   const editor = useCreationEditor({ creationId: '11111111-1111-4111-8111-111111111111', initialDocument: base, initialRevision: 2, identityKey, onSaved: onState });
